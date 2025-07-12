@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef, useState, useCallback } from 'react';
 import { 
   createChart, 
   IChartApi, 
@@ -8,7 +8,8 @@ import {
   CandlestickSeries,
   LineSeries,
   ColorType,
-  Time 
+  Time,
+  IPriceLine
 } from 'lightweight-charts';
 import { ProcessedCandle } from '@/lib/binance';
 import { ChartType } from './ChartTypeSelector';
@@ -47,11 +48,11 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Line'> | ISeriesApi<'Candlestick'> | null>(null);
-  const supportPriceLineRef = useRef<any>(null);
-  const resistancePriceLineRef = useRef<any>(null);
-  const entryPriceLineRef = useRef<any>(null);
-  const stopLossPriceLineRef = useRef<any>(null);
-  const takeProfitPriceLineRef = useRef<any>(null);
+  const supportPriceLineRef = useRef<IPriceLine | null>(null);
+  const resistancePriceLineRef = useRef<IPriceLine | null>(null);
+  const entryPriceLineRef = useRef<IPriceLine | null>(null);
+  const stopLossPriceLineRef = useRef<IPriceLine | null>(null);
+  const takeProfitPriceLineRef = useRef<IPriceLine | null>(null);
   const volumeProfileRef = useRef<VolumeProfile | null>(null);
   const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false);
   const lastUpdateTimeRef = useRef<number>(0);
@@ -77,7 +78,7 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
   };
 
   // Price line management functions
-  const updateSupportResistanceLines = () => {
+  const updateSupportResistanceLines = useCallback(() => {
     if (!seriesRef.current) return;
 
     // Remove existing support/resistance price lines
@@ -123,9 +124,9 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
         console.error('Error creating resistance line:', error);
       }
     }
-  };
+  }, [supportLevel, resistanceLevel]);
 
-  const updateTradingSignalLines = () => {
+  const updateTradingSignalLines = useCallback(() => {
     if (!seriesRef.current) return;
 
     // Remove existing trading signal price lines
@@ -192,7 +193,7 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
         console.error('Error creating take profit line:', error);
       }
     }
-  };
+  }, [entryPrice, stopLoss, takeProfit]);
 
   const removeSupportResistanceLines = () => {
     if (!seriesRef.current) return;
@@ -266,7 +267,7 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
     }
   };
 
-  const updateVolumeProfile = () => {
+  const updateVolumeProfile = useCallback(() => {
     if (!volumeProfileRef.current || data.length === 0) return;
 
     try {
@@ -276,7 +277,7 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
     } catch (error) {
       console.error('Error updating volume profile:', error);
     }
-  };
+  }, [data, showVolumeProfile]);
 
   // Expose update methods to parent
   useImperativeHandle(ref, () => ({
@@ -438,7 +439,7 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
       console.log('Updating support/resistance lines:', { supportLevel, resistanceLevel });
       updateSupportResistanceLines();
     }
-  }, [supportLevel, resistanceLevel, isInitialDataLoaded]);
+  }, [supportLevel, resistanceLevel, isInitialDataLoaded, updateSupportResistanceLines]);
 
   // Update trading signal lines when TP/SL data changes
   useEffect(() => {
@@ -446,14 +447,14 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
       console.log('Updating trading signal lines:', { entryPrice, stopLoss, takeProfit });
       updateTradingSignalLines();
     }
-  }, [entryPrice, stopLoss, takeProfit, isInitialDataLoaded]);
+  }, [entryPrice, stopLoss, takeProfit, isInitialDataLoaded, updateTradingSignalLines]);
 
   // Update volume profile when data or visibility changes
   useEffect(() => {
     if (isInitialDataLoaded && data.length > 0) {
       updateVolumeProfile();
     }
-  }, [data, showVolumeProfile, isInitialDataLoaded]);
+  }, [data, showVolumeProfile, isInitialDataLoaded, updateVolumeProfile]);
 
   // Load data when timeframe changes or initial load (use setData for timeframe switching)
   useEffect(() => {
@@ -512,7 +513,7 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
         chartRef.current?.timeScale().fitContent();
       }, 100);
     }
-  }, [data, chartType, isInitialDataLoaded, currentTimeframe]);
+  }, [data, chartType, isInitialDataLoaded, currentTimeframe, updateSupportResistanceLines, updateTradingSignalLines]);
 
   console.log('Chart data received:', data.length, 'candles, type:', chartType);
 

@@ -1,181 +1,238 @@
-# BTC Trading Analyzer - Project Context Summary
+# 🚀 BTC Trading Analyzer
 
-## Project Overview
+A sophisticated Bitcoin trading analysis platform built with Next.js, featuring real-time data visualization, AI-powered market analysis, and comprehensive technical indicators.
 
-BTCUSD Trading Analyzer เป็น Next.js web application ที่ใช้วิเคราะห์การเทรด Bitcoin โดยใช้ข้อมูลจาก Binance API และ AI analysis สำหรับหาจุด entry/exit points (สำหรับการศึกษาเท่านั้น ไม่ทำการเทรดจริง)
+![Next.js](https://img.shields.io/badge/Next.js-14-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3-38B2AC)
+![TradingView](https://img.shields.io/badge/TradingView-Charts-blue)
 
-## Technical Stack
+## ✨ Features
+
+### 📊 Advanced Chart System
+- **Professional Trading Charts** powered by TradingView Lightweight Charts
+- **15 Timeframes**: 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M
+- **Multiple Chart Types**: Candlestick and Line charts
+- **Real-time Updates** via Binance WebSocket streaming
+
+### 🤖 AI-Powered Analysis
+- **Dual AI System**: Real AI (Claude) + Mock AI fallback
+- **Browser Integration**: No API keys required - uses `window.claude.complete()`
+- **Clear Source Indication**: Shows whether using "Real AI" or "Mock AI"
+- **Manual Analysis Triggers**: Click-to-analyze instead of automatic
+- **Multi-timeframe Support**: Analyze any timeframe independently
+
+### 📈 Technical Indicators
+- **Core Indicators**: RSI, MACD, SMA (20/50), EMA (12/26)
+- **Bollinger Bands**: Upper, Middle, and Lower bands
+- **Support/Resistance**: Calculated from latest 20 candles
+- **Volume Analysis**: Advanced volume profile with Point of Control
+
+### 🎯 Price Line Visualization
+- **Support Line**: Green solid line showing support levels
+- **Resistance Line**: Red solid line showing resistance levels
+- **Entry Price**: Blue solid line for AI-recommended entry points
+- **Stop Loss**: Red dashed line for risk management
+- **Take Profit**: Green dashed line for profit targets
+
+### 📊 Volume Profile
+- **Horizontal Volume Bars**: Shows volume distribution across price levels
+- **Point of Control (POC)**: Price level with highest volume (gold highlight)
+- **Value Area**: 70% of total volume area (dashed lines)
+- **Toggle Control**: Easy on/off switch for volume profile visibility
+
+### ⚡ Real-time Features
+- **WebSocket Integration**: Binance WebSocket for live data streaming
+- **Auto-reconnection**: Automatic reconnection with fallback URLs
+- **Connection Status**: Real-time connection status indicator
+- **Live Price Updates**: Current price and change percentage
+
+## 🛠️ Technology Stack
 
 - **Frontend**: Next.js 14, TypeScript, TailwindCSS
 - **Charts**: TradingView Lightweight Charts
 - **Data Source**: Binance Public API & WebSocket
-- **AI Integration**: Browser-based Claude AI (window.claude.complete)
+- **AI Integration**: Browser-based Claude AI
 - **Real-time**: WebSocket connections with auto-reconnection
+- **Styling**: TailwindCSS with custom components
 
-## Key Features
+## 🚀 Quick Start
 
-### 1. Advanced Chart System
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
 
-- **TradingView Lightweight Charts** integration
-- **15 Timeframes**: 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M
-- **Default Timeframe**: 1D
-- **Chart Types**: Candlestick และ Line charts
-- **Real-time Updates**: WebSocket streaming data
+### Installation
 
-### 2. AI Analysis System
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/btc-trading-analyzer.git
+   cd btc-trading-analyzer
+   ```
 
-- **Dual AI Support**: Real AI (Claude) + Mock AI fallback
-- **Browser Integration**: ใช้ window.claude.complete() ไม่ต้อง API keys
-- **Clear Source Indication**: แสดงชัดเจนว่าใช้ "Real AI" หรือ "Mock AI"
-- **Manual Triggers**: กดปุ่มเพื่อ analyze แทนการทำงานอัตโนมัติ
-- **Multiple Timeframe Analysis**: สามารถ analyze timeframe อื่นได้
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-### 3. Technical Indicators
+3. **Run development server**
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
 
-- **Basic Indicators**: RSI, MACD, SMA (20/50), EMA (12/26)
-- **Bollinger Bands**: Upper/Middle/Lower bands
-- **Support/Resistance**: คำนวณจาก 20 candles ล่าสุด
-- **Volume Analysis**: Volume profile with Point of Control
+4. **Open in browser**
+   ```
+   http://localhost:3000
+   ```
 
-### 4. Price Line Visualization
-
-- **Support Line**: เส้นเขียวทึบ แสดงระดับ support
-- **Resistance Line**: เส้นแดงทึบ แสดงระดับ resistance
-- **Entry Price**: เส้นน้ำเงินทึบ แสดงจุด entry ที่ AI แนะนำ
-- **Stop Loss**: เส้นแดงประ แสดงจุดตัดขาดทุน
-- **Take Profit**: เส้นเขียวประ แสดงจุดเก็บกำไร
-
-### 5. Volume Profile
-
-- **Horizontal Volume Bars**: แสดง volume distribution ตามระดับราคา
-- **Point of Control (POC)**: ระดับราคาที่มี volume สูงสุด (สีทอง)
-- **Value Area**: พื้นที่ 70% ของ total volume (เส้นประ)
-- **Toggle Control**: เปิด/ปิดได้ด้วยปุ่ม toggle
-
-### 6. Real-time Features
-
-- **WebSocket Integration**: Binance WebSocket สำหรับ real-time data
-- **Auto-reconnection**: ระบบ reconnect อัตโนมัติพร้อม fallback URLs
-- **Connection Status**: แสดงสถานะการเชื่อมต่อ real-time
-- **Price Updates**: แสดงราคาปัจจุบันและการเปลี่ยนแปลง
-
-## File Structure
-
-### Components
-
-- `TradingChart.tsx` - หลักของ chart พร้อม TradingView integration
-- `AIAnalysisPanel.tsx` - แสดงผล AI analysis และ controls
-- `TimeframeSelector.tsx` - Dropdown เลือก timeframe (15 ตัวเลือก)
-- `ChartTypeSelector.tsx` - เลือกประเภท chart (candlestick/line)
-- `VolumeProfileToggle.tsx` - Toggle เปิด/ปิด volume profile
-- `RealTimePriceIndicator.tsx` - แสดงราคาปัจจุบัน
-
-### Libraries
-
-- `binance.ts` - Binance API integration และ data processing
-- `websocket.ts` - WebSocket management พร้อม error handling
-- `claude-ai.ts` - AI analysis integration (Real + Mock)
-- `technical-analysis.ts` - คำนวณ technical indicators
-- `ai-analyzer.ts` - Market analysis และ support/resistance detection
-- `volume-profile-plugin.ts` - Volume profile calculation และ rendering
-
-### Hooks
-
-- `useMarketData.ts` - จัดการ data fetching, WebSocket, และ analysis
-
-## AI Analysis Details
-
-### Real AI Integration
-
-- ใช้ `window.claude.complete()` สำหรับ browser-based AI
-- ส่ง prompt ที่มีข้อมูล market data และ technical indicators
-- รับผลลัพธ์เป็น JSON format พร้อม trading signals
-
-### Mock AI Fallback
-
-- ระบบ AI จำลองที่ใช้ technical indicators
-- คำนวณ signals จาก RSI levels (oversold/overbought)
-- ใช้เมื่อ Real AI ไม่พร้อมใช้งาน
-
-### Trading Signals
-
-- **Signal Types**: BUY, SELL, HOLD
-- **Entry/TP/SL**: คำนวณจากราคาปัจจุบัน (±2%, ±4%)
-- **Confidence Levels**: แสดงระดับความมั่นใจของ AI
-- **Reasoning**: อธิบายเหตุผลของการ analysis
-
-## WebSocket Implementation
-
-### Connection Management
-
-- **Primary URL**: `wss://stream.binance.com:9443`
-- **Fallback URLs**: Multiple backup endpoints
-- **Stream Format**: `btcusdt@kline_1d` (ตาม timeframe)
-- **Auto-reconnection**: Exponential backoff พร้อม jitter
-
-### Error Handling
-
-- **Timeout Handling**: 10 วินาที connection timeout
-- **Ping/Pong**: Heartbeat ทุก 30 วินาที (ตาม Binance requirements)
-- **Error Logging**: Detailed error messages และ close codes
-- **Graceful Degradation**: Fallback เมื่อ WebSocket fail
-
-## Recent Bug Fixes
-
-### WebSocket Connection Issues
-
-- แก้ไข URL format ให้ตรงกับ Binance documentation
-- เปลี่ยนจาก `/ws/streamName` เป็น `/ws/streamName`
-- เพิ่ม fallback URLs และ exponential backoff
-
-### Duplicate Timestamp Validation
-
-- เพิ่ม duplicate filtering ใน data processing
-- แก้ไข "data must be asc ordered by time" errors
-- ปรับปรุง time validation ใน chart component
-
-### Chart Data Ordering
-
-- เพิ่ม data sorting ก่อน setData()
-- แก้ไข "Cannot update oldest data" errors
-- ปรับปรุง real-time update logic
-
-## Development Commands
+### Build for Production
 
 ```bash
-# Development
-npm run dev
-
-# Build
+# Build the application
 npm run build
 
-# Production
+# Start production server
 npm start
 
-# Linting
+# Run linting
 npm run lint
 ```
 
-## Development Notes
+## 📖 Usage Guide
 
-- you don't need to "npm run dev" I will do myself
+### Basic Usage
 
-## Environment Setup
+1. **Select Timeframe**: Choose from 15 available timeframes using the dropdown
+2. **Chart Type**: Switch between Candlestick and Line charts
+3. **AI Analysis**: Click "Test Analysis" to get AI-powered market insights
+4. **Volume Profile**: Toggle volume profile visualization on/off
+5. **Real-time Data**: Watch live price updates via WebSocket connection
 
-- ไม่ต้องใช้ API keys (ใช้ Binance public API)
-- ใช้ browser-based Claude AI integration
-- รองรับ development และ production environments
+### AI Analysis
 
-## Future Enhancements
+The platform supports two types of AI analysis:
 
-- เพิ่ม technical indicators เพิ่มเติม
-- ปรับปรุง Volume Profile visualization
-- เพิ่ม historical data analysis
-- Backtesting capabilities
-- Multi-timeframe analysis
+- **Real AI**: Uses Claude AI via browser integration (when available)
+- **Mock AI**: Fallback system using technical indicators
+
+Results include:
+- Trading signals (BUY/SELL/HOLD)
+- Entry/exit price recommendations
+- Stop loss and take profit levels
+- Confidence levels and reasoning
+
+### Technical Features
+
+- **Support/Resistance Detection**: Automatically calculated levels
+- **Multiple Timeframe Analysis**: Analyze different timeframes independently
+- **Real-time Price Lines**: Dynamic visualization of trading levels
+- **Volume Analysis**: Professional volume profile with POC
+
+## 🔧 Configuration
+
+### Environment Variables
+
+No environment variables or API keys required! The application uses:
+- Binance public API endpoints
+- Browser-based Claude AI integration
+- WebSocket connections without authentication
+
+### WebSocket Configuration
+
+The application automatically handles WebSocket connections with:
+- Primary URL: `wss://stream.binance.com:9443`
+- Multiple fallback URLs for reliability
+- Automatic reconnection with exponential backoff
+- Heartbeat mechanism for connection health
+
+## 📁 Project Structure
+
+```
+├── components/           # React components
+│   ├── TradingChart.tsx         # Main chart component
+│   ├── AIAnalysisPanel.tsx     # AI analysis display
+│   ├── TimeframeSelector.tsx   # Timeframe dropdown
+│   ├── ChartTypeSelector.tsx   # Chart type toggle
+│   ├── VolumeProfileToggle.tsx # Volume profile control
+│   └── RealTimePriceIndicator.tsx # Price display
+├── lib/                 # Core libraries
+│   ├── binance.ts              # Binance API integration
+│   ├── websocket.ts            # WebSocket management
+│   ├── claude-ai.ts            # AI analysis integration
+│   ├── technical-analysis.ts   # Technical indicators
+│   ├── ai-analyzer.ts          # Market analysis
+│   └── volume-profile-plugin.ts # Volume profile calculation
+├── hooks/               # React hooks
+│   └── useMarketData.ts        # Data fetching and management
+└── app/                 # Next.js app directory
+    ├── page.tsx                # Main page
+    └── api/                    # API routes
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **WebSocket Connection Failed**
+   - Check internet connection
+   - The app automatically tries fallback URLs
+   - Connection status is shown in the UI
+
+2. **Chart Not Loading**
+   - Refresh the page
+   - Check browser console for errors
+   - Ensure JavaScript is enabled
+
+3. **AI Analysis Not Working**
+   - Real AI requires Claude browser integration
+   - Falls back to Mock AI automatically
+   - Check if Claude is available in your browser
+
+### Development Issues
+
+1. **Build Errors**
+   ```bash
+   npm run lint
+   npm run build
+   ```
+
+2. **TypeScript Errors**
+   - Check type definitions
+   - Ensure all imports are correct
+   - Run `npm run build` for full type checking
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [TradingView](https://www.tradingview.com/) for the excellent Lightweight Charts library
+- [Binance](https://www.binance.com/) for providing free public API access
+- [Anthropic](https://www.anthropic.com/) for Claude AI integration
+- [Next.js](https://nextjs.org/) team for the amazing framework
+
+## 📧 Contact
+
+- GitHub: [@yourusername](https://github.com/yourusername)
+- Email: your.email@example.com
 
 ---
 
-**Last Updated**: December 2024  
+**⚠️ Disclaimer**: This application is for educational and analysis purposes only. It does not provide financial advice and should not be used for actual trading decisions. Always do your own research and consult with financial professionals before making investment decisions.
+
+**Status**: Production Ready ✅  
 **Version**: 1.0.0  
-**Status**: Production Ready
+**Last Updated**: December 2024

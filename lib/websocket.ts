@@ -244,13 +244,11 @@ export class BinanceWebSocket {
     this.pingInterval = setInterval(() => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         try {
-          // Send ping frame (WebSocket will automatically handle pong response)
-          this.ws.ping?.();
-          console.log('[WebSocket] Ping sent for heartbeat');
+          // Browser WebSocket doesn't have ping method, use text message for heartbeat
+          this.ws.send(JSON.stringify({method: 'ping', timestamp: Date.now()}));
+          console.log('[WebSocket] Heartbeat sent');
         } catch (error) {
-          console.warn('[WebSocket] Ping not supported, using alternative heartbeat');
-          // Fallback: send a small message if ping is not supported
-          this.ws.send(JSON.stringify({method: 'ping'}));
+          console.warn('[WebSocket] Heartbeat failed:', error);
         }
       }
     }, 30000); // 30 seconds

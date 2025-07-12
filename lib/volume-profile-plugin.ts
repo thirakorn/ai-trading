@@ -2,8 +2,6 @@ import {
   IChartApi,
   ISeriesApi,
   Time,
-  Logical,
-  Range,
   SeriesType,
 } from 'lightweight-charts';
 import { ProcessedCandle } from './binance';
