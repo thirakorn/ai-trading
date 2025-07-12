@@ -15,6 +15,7 @@ export function useMarketData() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [currentTimeframe, setCurrentTimeframe] = useState<BinanceInterval>('1d');
+  const [currentSymbol, setCurrentSymbol] = useState<string>('BTCUSDT');
   const [isConnected, setIsConnected] = useState(false);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [priceChange, setPriceChange] = useState<number>(0);
@@ -40,10 +41,10 @@ export function useMarketData() {
     }
     
     try {
-      console.log('Fetching initial price data...');
+      console.log(`Fetching initial price data for ${currentSymbol}...`);
       
       // Fetch 24hr ticker data for current price and changes
-      const ticker = await binanceFetcher.fetch24hrTicker('BTCUSDT');
+      const ticker = await binanceFetcher.fetch24hrTicker(currentSymbol);
       setTickerData(ticker);
       setCurrentPrice(parseFloat(ticker.lastPrice));
       setPriceChange(parseFloat(ticker.priceChange));
@@ -66,7 +67,7 @@ export function useMarketData() {
       
       // Don't throw, just log - WebSocket might provide updates later
     }
-  }, []);
+  }, [currentSymbol]);
 
   const fetchData = useCallback(async (timeframe?: BinanceInterval, force = false) => {
     try {
@@ -83,7 +84,7 @@ export function useMarketData() {
       console.log('Fetching market data for timeframe:', intervalToUse);
       
       // Fetch candlestick data only for AI analysis
-      const candles = await binanceFetcher.fetchKlines('BTCUSDT', intervalToUse, 100);
+      const candles = await binanceFetcher.fetchKlines(currentSymbol, intervalToUse, 100);
       console.log('Candles fetched for AI analysis:', candles.length);
       setCandleData(candles);
       
@@ -131,7 +132,7 @@ export function useMarketData() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentTimeframe, currentPrice, candleData.length]);
+  }, [currentSymbol, currentTimeframe, currentPrice, candleData.length]);
 
 
   // WebSocket handlers - simplified for price updates only
@@ -194,7 +195,7 @@ export function useMarketData() {
 
   // Initialize WebSocket
   useEffect(() => {
-    wsRef.current = createBinanceWebSocket('BTCUSDT', currentTimeframe);
+    wsRef.current = createBinanceWebSocket(currentSymbol, currentTimeframe);
     
     wsRef.current.onKline(handleKlineUpdate);
     wsRef.current.onTicker(handleTickerUpdate);
@@ -212,7 +213,7 @@ export function useMarketData() {
         wsRef.current.disconnect();
       }
     };
-  }, [currentTimeframe, handleKlineUpdate, handleTickerUpdate, handleConnectionChange, handleWebSocketError]);
+  }, [currentSymbol, currentTimeframe, handleKlineUpdate, handleTickerUpdate, handleConnectionChange, handleWebSocketError]);
 
   const changeTimeframe = useCallback((newTimeframe: BinanceInterval) => {
     if (newTimeframe === currentTimeframe) {
@@ -226,12 +227,42 @@ export function useMarketData() {
     
     // Change WebSocket stream
     if (wsRef.current) {
-      wsRef.current.changeStream('BTCUSDT', newTimeframe);
+      wsRef.current.changeStream(currentSymbol, newTimeframe);
     }
     
     // Force fetch new data for AI analysis (but respect caching for same timeframe)
     fetchData(newTimeframe, true);
-  }, [currentTimeframe, fetchData]);
+  }, [currentSymbol, currentTimeframe, fetchData]);
+
+  const changeSymbol = useCallback((newSymbol: string) => {
+    if (newSymbol === currentSymbol) {
+      console.log('Same symbol selected, skipping change');
+      return;
+    }
+    
+    console.log('Changing symbol from', currentSymbol, 'to', newSymbol);
+    setCurrentSymbol(newSymbol);
+    setIsLoading(true);
+    
+    // Reset states
+    setCandleData([]);
+    setAnalysis(null);
+    setIndicatorArrays(null);
+    setCurrentPrice(null);
+    setPriceChange(0);
+    setPriceChangePercent(0);
+    setTickerData(null);
+    setError(null);
+    
+    // Change WebSocket stream
+    if (wsRef.current) {
+      wsRef.current.changeStream(newSymbol, currentTimeframe);
+    }
+    
+    // Force fetch new data for new symbol
+    fetchData(currentTimeframe, true);
+    fetchPriceData(true);
+  }, [currentSymbol, currentTimeframe, fetchData, fetchPriceData]);
 
   const refreshData = useCallback(() => {
     console.log('Manual refresh triggered');
@@ -280,6 +311,7 @@ export function useMarketData() {
     error,
     lastUpdate,
     currentTimeframe,
+    currentSymbol,
     isConnected,
     currentPrice,
     priceChange,
@@ -289,6 +321,7 @@ export function useMarketData() {
     connectionState,
     indicators: analysis?.indicators || null,
     refreshData,
-    changeTimeframe
+    changeTimeframe,
+    changeSymbol
   };
 }

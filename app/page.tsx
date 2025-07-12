@@ -7,6 +7,7 @@ import AnalysisPanel from '@/components/AnalysisPanel';
 import TimeframeSelector from '@/components/TimeframeSelector';
 import RealTimePriceIndicator from '@/components/RealTimePriceIndicator';
 import AIToggle from '@/components/AIToggle';
+import SymbolSelector from '@/components/SymbolSelector';
 
 export default function Dashboard() {
   const [useAI, setUseAI] = useState(false);
@@ -19,6 +20,7 @@ export default function Dashboard() {
     error, 
     lastUpdate, 
     currentTimeframe, 
+    currentSymbol,
     isConnected,
     currentPrice,
     priceChange,
@@ -27,7 +29,8 @@ export default function Dashboard() {
     connectionState,
     indicators,
     refreshData, 
-    changeTimeframe 
+    changeTimeframe,
+    changeSymbol 
   } = useMarketData();
 
   return (
@@ -36,19 +39,25 @@ export default function Dashboard() {
       <div className="border-b border-gray-800 p-4">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">BTCUSD Trading Analyzer</h1>
+            <h1 className="text-2xl font-bold">Entry/Exit Trading Analyzer</h1>
             <p className="text-gray-400">AI-Powered Entry/Exit Analysis</p>
           </div>
           <div className="flex items-center space-x-4">
-            <AIToggle
-              useAI={useAI}
-              onToggle={setUseAI}
+            <SymbolSelector
+              currentSymbol={currentSymbol}
+              onSymbolChange={changeSymbol}
               disabled={isLoading}
             />
             <div className="border-l border-gray-600 h-6"></div>
             <TimeframeSelector
               currentTimeframe={currentTimeframe}
               onTimeframeChange={changeTimeframe}
+              disabled={isLoading}
+            />
+            <div className="border-l border-gray-600 h-6"></div>
+            <AIToggle
+              useAI={useAI}
+              onToggle={setUseAI}
               disabled={isLoading}
             />
             {lastUpdate && (
@@ -95,13 +104,13 @@ export default function Dashboard() {
               priceChange={priceChange}
               priceChangePercent={priceChangePercent}
               isConnected={isConnected}
-              symbol="BTCUSDT"
+              symbol={currentSymbol}
             />
 
             <div className="bg-gray-800 rounded-lg p-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold">
-                  BTCUSD {currentTimeframe.toUpperCase()} Chart
+                  {currentSymbol.replace('USDT', '/USDT')} {currentTimeframe.toUpperCase()} Chart
                 </h2>
                 <div className="flex items-center space-x-2">
                   <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
@@ -112,7 +121,7 @@ export default function Dashboard() {
               </div>
               <TradingChart 
                 ref={chartRef}
-                symbol="BINANCE:BTCUSDT"
+                symbol={`BINANCE:${currentSymbol}`}
                 currentTimeframe={currentTimeframe}
                 supportLevel={analysis?.support || null}
                 resistanceLevel={analysis?.resistance || null}
@@ -166,8 +175,8 @@ export default function Dashboard() {
       {/* Footer */}
       <div className="border-t border-gray-800 p-4 mt-8">
         <div className="text-center text-gray-400 text-sm">
-          <p>BTCUSD Trading Analyzer - For Educational Purposes Only</p>
-          <p className="mt-1">Real-time data via Binance WebSocket • Chart types: Line & Candlestick</p>
+          <p>Multi-Symbol Trading Analyzer - For Educational Purposes Only</p>
+          <p className="mt-1">Real-time data via Binance WebSocket • 12 Trading Pairs • Enhanced Error Handling</p>
         </div>
       </div>
     </div>
