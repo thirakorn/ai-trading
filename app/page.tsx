@@ -1,103 +1,213 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useRef, useCallback } from 'react';
+import { useMarketData } from '@/hooks/useMarketData';
+import { ProcessedCandle } from '@/lib/binance';
+import TradingChart, { TradingChartRef } from '@/components/TradingChart';
+import AnalysisPanel from '@/components/AnalysisPanel';
+import TimeframeSelector from '@/components/TimeframeSelector';
+import ChartTypeSelector, { ChartType } from '@/components/ChartTypeSelector';
+import RealTimePriceIndicator from '@/components/RealTimePriceIndicator';
+import AIToggle from '@/components/AIToggle';
+import VolumeProfileToggle from '@/components/VolumeProfileToggle';
+
+export default function Dashboard() {
+  const [chartType, setChartType] = useState<ChartType>('candlestick');
+  const [useAI, setUseAI] = useState(false);
+  const [showVolumeProfile, setShowVolumeProfile] = useState(false);
+  const chartRef = useRef<TradingChartRef>(null);
+
+  // Handle real-time candle updates
+  const handleCandleUpdate = useCallback((candle: ProcessedCandle) => {
+    if (chartRef.current) {
+      chartRef.current.updateCandle(candle);
+    }
+  }, []);
+
+  const { 
+    candleData, 
+    analysis, 
+    isLoading, 
+    error, 
+    lastUpdate, 
+    currentTimeframe, 
+    isConnected,
+    currentPrice,
+    priceChange,
+    wsError,
+    connectionState,
+    indicators,
+    refreshData, 
+    changeTimeframe 
+  } = useMarketData(handleCandleUpdate);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* Header */}
+      <div className="border-b border-gray-800 p-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold">BTCUSD Trading Analyzer</h1>
+            <p className="text-gray-400">AI-Powered Entry/Exit Analysis</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <AIToggle
+              useAI={useAI}
+              onToggle={setUseAI}
+              disabled={isLoading}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <div className="border-l border-gray-600 h-6"></div>
+            <ChartTypeSelector
+              currentChartType={chartType}
+              onChartTypeChange={setChartType}
+              disabled={isLoading}
+            />
+            <VolumeProfileToggle
+              enabled={showVolumeProfile}
+              onToggle={setShowVolumeProfile}
+              disabled={isLoading}
+            />
+            <TimeframeSelector
+              currentTimeframe={currentTimeframe}
+              onTimeframeChange={changeTimeframe}
+              disabled={isLoading}
+            />
+            {lastUpdate && (
+              <div className="text-sm text-gray-400">
+                Last Update: {lastUpdate.toLocaleTimeString()}
+              </div>
+            )}
+            <button
+              onClick={refreshData}
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              {isLoading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-900/20 border border-red-800 text-red-400 px-4 py-3 mx-4 mt-4 rounded-lg">
+          <p className="font-medium">API Error:</p>
+          <p>{error}</p>
+        </div>
+      )}
+      
+      {/* WebSocket Error Display */}
+      {wsError && (
+        <div className="bg-orange-900/20 border border-orange-800 text-orange-400 px-4 py-3 mx-4 mt-4 rounded-lg">
+          <p className="font-medium">WebSocket Error:</p>
+          <p>{wsError}</p>
+          <p className="text-sm text-orange-300 mt-1">Connection State: {connectionState}</p>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="p-4">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Chart Section */}
+          <div className="xl:col-span-2 space-y-4">
+            {/* Real-time Price Indicator */}
+            <RealTimePriceIndicator
+              currentPrice={currentPrice}
+              priceChange={priceChange}
+              isConnected={isConnected}
+              symbol="BTCUSDT"
+            />
+
+            <div className="bg-gray-800 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">
+                  BTCUSD {currentTimeframe.toUpperCase()} Chart ({chartType === 'candlestick' ? 'Candlestick' : 'Line'})
+                </h2>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+                  <span className="text-xs text-gray-400">
+                    {isConnected ? 'Real-time' : 'Offline'}
+                  </span>
+                </div>
+              </div>
+              {candleData.length > 0 ? (
+                <TradingChart 
+                  ref={chartRef}
+                  data={candleData} 
+                  chartType={chartType}
+                  currentTimeframe={currentTimeframe}
+                  supportLevel={analysis?.support || null}
+                  resistanceLevel={analysis?.resistance || null}
+                  entryPrice={analysis?.signals?.entryPrice || null}
+                  stopLoss={analysis?.signals?.stopLoss || null}
+                  takeProfit={analysis?.signals?.takeProfit || null}
+                  showVolumeProfile={showVolumeProfile}
+                  height={500} 
+                />
+              ) : (
+                <div className="h-[500px] bg-gray-900 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                        <p className="text-gray-400">Loading chart data...</p>
+                      </>
+                    ) : (
+                      <p className="text-gray-400">No chart data available</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Market Status */}
+            <div className="bg-gray-800 rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-3">Market Status</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <p className="text-sm text-gray-400">Data Points</p>
+                  <p className="text-xl font-bold text-white">{candleData.length}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-400">Timeframe</p>
+                  <p className="text-xl font-bold text-blue-400">{currentTimeframe.toUpperCase()}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-400">Auto Refresh</p>
+                  <p className="text-xl font-bold text-green-400">ON</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-400">WebSocket</p>
+                  <p className={`text-xl font-bold ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
+                    {isConnected ? 'CONNECTED' : 'DISCONNECTED'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">{connectionState}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Analysis Panel */}
+          <div className="xl:col-span-1">
+            <AnalysisPanel 
+              analysis={analysis} 
+              isLoading={isLoading}
+              useAI={useAI}
+              candles={candleData}
+              indicators={indicators}
+              currentTimeframe={currentTimeframe}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-gray-800 p-4 mt-8">
+        <div className="text-center text-gray-400 text-sm">
+          <p>BTCUSD Trading Analyzer - For Educational Purposes Only</p>
+          <p className="mt-1">Real-time data via Binance WebSocket • Chart types: Line & Candlestick</p>
+        </div>
+      </div>
     </div>
   );
 }

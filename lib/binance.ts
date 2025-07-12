@@ -1,0 +1,100 @@
+export type CandlestickData = [
+  number,  // openTime
+  string,  // open
+  string,  // high
+  string,  // low
+  string,  // close
+  string,  // volume
+  number,  // closeTime
+  string,  // quoteAssetVolume
+  number,  // numberOfTrades
+  string,  // takerBuyBaseAssetVolume
+  string,  // takerBuyQuoteAssetVolume
+  string   // ignore
+];
+
+export interface ProcessedCandle {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export type BinanceInterval = 
+  '1m' | '3m' | '5m' | '15m' | '30m' | 
+  '1h' | '2h' | '4h' | '6h' | '8h' | '12h' | 
+  '1d' | '3d' | '1w' | '1M';
+
+export class BinanceDataFetcher {
+  private readonly baseUrl = '/api/binance';
+  
+  async fetchKlines(symbol = 'BTCUSDT', interval: BinanceInterval = '5m', limit = 100): Promise<ProcessedCandle[]> {
+    try {
+      const url = `${this.baseUrl}?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data: CandlestickData[] = await response.json();
+      
+      const processed = data.map(candle => ({
+        time: candle[0] / 1000, // Convert to seconds for lightweight-charts
+        open: parseFloat(candle[1]),
+        high: parseFloat(candle[2]),
+        low: parseFloat(candle[3]),
+        close: parseFloat(candle[4]),
+        volume: parseFloat(candle[5])
+      }))
+      .sort((a, b) => a.time - b.time) // Ensure ascending time order
+      .filter((candle, index, array) => {
+        // Remove duplicates - keep only first occurrence of each timestamp
+        if (index === 0) return true;
+        const isDuplicate = candle.time === array[index - 1].time;
+        if (isDuplicate) {
+          console.warn('Removing duplicate timestamp from Binance data:', candle.time);
+        }
+        return !isDuplicate;
+      });
+      
+      console.log('Binance data processed:', processed.length, 'candles');
+      console.log('Time range:', processed[0]?.time, 'to', processed[processed.length-1]?.time);
+      console.log('Sample processed candle:', processed[0]);
+      
+      // Validate time ordering
+      for (let i = 1; i < processed.length; i++) {
+        if (processed[i].time <= processed[i-1].time) {
+          console.error('Binance data not properly ordered at index:', i, 
+            'prev:', processed[i-1].time, 'current:', processed[i].time);
+        }
+      }
+      
+      return processed;
+    } catch (error) {
+      console.error('Error fetching Binance data:', error);
+      throw error;
+    }
+  }
+  
+  async fetchLatestPrice(symbol = 'BTCUSDT'): Promise<number> {
+    try {
+      const url = `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return parseFloat(data.price);
+    } catch (error) {
+      console.error('Error fetching latest price:', error);
+      throw error;
+    }
+  }
+}
+
+export const binanceFetcher = new BinanceDataFetcher();
