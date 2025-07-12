@@ -56,7 +56,8 @@ export class BinanceWebSocket {
   private readonly wsUrls = [
     'wss://stream.binance.com:9443',
     'wss://stream.binance.com:443', 
-    'wss://data-stream.binance.vision'
+    'wss://data-stream.binance.vision',
+    'wss://stream.binance.us:9443' // US endpoint as additional fallback
   ];
   private currentUrlIndex = 0;
 
@@ -252,7 +253,7 @@ export class BinanceWebSocket {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         try {
           // Browser WebSocket doesn't have ping method, use text message for heartbeat
-          this.ws.send(JSON.stringify({method: 'ping', timestamp: Date.now()}));
+          this.ws.send(JSON.stringify({id: 1, method: 'PING'}));
           console.log('[WebSocket] Heartbeat sent');
         } catch (error) {
           console.warn('[WebSocket] Heartbeat failed:', error);

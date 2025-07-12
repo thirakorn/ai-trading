@@ -7,7 +7,7 @@ import { generateMockData } from '@/lib/mock-data';
 import { createBinanceWebSocket, WebSocketKlineData, WebSocketTickerData } from '@/lib/websocket';
 import { TechnicalAnalysis, IndicatorArrays } from '@/lib/technical-analysis';
 
-export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void) {
+export function useMarketData() {
   const [candleData, setCandleData] = useState<ProcessedCandle[]>([]);
   const [analysis, setAnalysis] = useState<MarketAnalysis | null>(null);
   const [indicatorArrays, setIndicatorArrays] = useState<IndicatorArrays | null>(null);
@@ -24,10 +24,21 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
   const [connectionState, setConnectionState] = useState<string>('Not initialized');
 
   const wsRef = useRef<ReturnType<typeof createBinanceWebSocket> | null>(null);
-  const onCandleUpdateRef = useRef(onCandleUpdate);
+  const lastFetchTimeRef = useRef<number>(0);
+  const lastPriceFetchRef = useRef<number>(0);
+  const cacheTimeoutRef = useRef<number>(300000); // 5 minute cache for market data
+  const priceCacheTimeoutRef = useRef<number>(30000); // 30 second cache for price data
 
-  // Fetch initial price and ticker data
-  const fetchPriceData = useCallback(async () => {
+  // Fetch initial price and ticker data with caching
+  const fetchPriceData = useCallback(async (force = false) => {
+    const now = Date.now();
+    
+    // Check cache - only fetch if forced or cache expired
+    if (!force && (now - lastPriceFetchRef.current) < priceCacheTimeoutRef.current) {
+      console.log('Skipping price data fetch (cached)');
+      return;
+    }
+    
     try {
       console.log('Fetching initial price data...');
       
@@ -38,6 +49,9 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
       setPriceChange(parseFloat(ticker.priceChange));
       setPriceChangePercent(parseFloat(ticker.priceChangePercent));
       
+      // Update cache timestamp
+      lastPriceFetchRef.current = now;
+      
       console.log('Initial price data fetched:', {
         currentPrice: ticker.lastPrice,
         priceChange: ticker.priceChange,
@@ -45,19 +59,32 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
       });
     } catch (error) {
       console.error('Error fetching initial price data:', error);
+      // Set fallback price data to prevent null states
+      setCurrentPrice(95000); // Fallback BTC price
+      setPriceChange(0);
+      setPriceChangePercent(0);
+      
       // Don't throw, just log - WebSocket might provide updates later
     }
   }, []);
 
-  const fetchData = useCallback(async (timeframe?: BinanceInterval) => {
+  const fetchData = useCallback(async (timeframe?: BinanceInterval, force = false) => {
     try {
       setError(null);
       const intervalToUse = timeframe || currentTimeframe;
+      const now = Date.now();
+      
+      // Only fetch if forced (timeframe change) or if we don't have data yet or cache expired
+      if (!force && candleData.length > 0 && (now - lastFetchTimeRef.current) < cacheTimeoutRef.current) {
+        console.log('Skipping market data fetch (cached)');
+        return;
+      }
+      
       console.log('Fetching market data for timeframe:', intervalToUse);
       
-      // Fetch candlestick data
+      // Fetch candlestick data only for AI analysis
       const candles = await binanceFetcher.fetchKlines('BTCUSDT', intervalToUse, 100);
-      console.log('Candles fetched:', candles.length);
+      console.log('Candles fetched for AI analysis:', candles.length);
       setCandleData(candles);
       
       // Set current price from latest candle if not already set
@@ -73,12 +100,14 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
         console.log('Analysis completed:', marketAnalysis);
         setAnalysis(marketAnalysis);
         
-        // Calculate indicator arrays
+        // Calculate indicator arrays for AI analysis
         const indicators = TechnicalAnalysis.calculateIndicatorArrays(candles);
-        console.log('Indicator arrays calculated:', indicators);
+        console.log('Indicator arrays calculated for AI:', indicators);
         setIndicatorArrays(indicators);
       }
       
+      // Update cache timestamp
+      lastFetchTimeRef.current = now;
       setLastUpdate(new Date());
     } catch (err) {
       console.error('Error fetching market data:', err);
@@ -102,17 +131,14 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
     } finally {
       setIsLoading(false);
     }
-  }, [currentTimeframe, currentPrice]);
+  }, [currentTimeframe, currentPrice, candleData.length]);
 
-  // Update ref when callback changes
-  useEffect(() => {
-    onCandleUpdateRef.current = onCandleUpdate;
-  }, [onCandleUpdate]);
 
-  // WebSocket handlers
+  // WebSocket handlers - simplified for price updates only
   const handleKlineUpdate = useCallback((data: WebSocketKlineData) => {
     console.log('Kline update received:', data);
     
+    // Update latest candle data for analysis purposes
     const currentCandle: ProcessedCandle = {
       time: data.k.t / 1000, // Convert to seconds
       open: parseFloat(data.k.o),
@@ -122,31 +148,8 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
       volume: parseFloat(data.k.v),
     };
 
-    // Update chart immediately for real-time effect
-    if (onCandleUpdateRef.current) {
-      onCandleUpdateRef.current(currentCandle);
-    }
-
-    // Update state data
-    setCandleData(prev => {
-      const newData = [...prev];
-      const candleTime = currentCandle.time;
-      
-      // Check if this is updating the current (last) candle or adding a new one
-      if (newData.length > 0 && newData[newData.length - 1].time === candleTime) {
-        // Update existing candle (live updates)
-        newData[newData.length - 1] = currentCandle;
-      } else {
-        // Add new candle (when time changes or first candle)
-        newData.push(currentCandle);
-        // Keep only last 100 candles
-        if (newData.length > 100) {
-          newData.shift();
-        }
-      }
-      return newData;
-    });
-
+    // Update current price for price indicator
+    setCurrentPrice(currentCandle.close);
     setLastUpdate(new Date());
   }, []);
 
@@ -212,6 +215,12 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
   }, [currentTimeframe, handleKlineUpdate, handleTickerUpdate, handleConnectionChange, handleWebSocketError]);
 
   const changeTimeframe = useCallback((newTimeframe: BinanceInterval) => {
+    if (newTimeframe === currentTimeframe) {
+      console.log('Same timeframe selected, skipping change');
+      return;
+    }
+    
+    console.log('Changing timeframe from', currentTimeframe, 'to', newTimeframe);
     setCurrentTimeframe(newTimeframe);
     setIsLoading(true);
     
@@ -220,45 +229,33 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
       wsRef.current.changeStream('BTCUSDT', newTimeframe);
     }
     
-    fetchData(newTimeframe);
-  }, [fetchData]);
+    // Force fetch new data for AI analysis (but respect caching for same timeframe)
+    fetchData(newTimeframe, true);
+  }, [currentTimeframe, fetchData]);
 
   const refreshData = useCallback(() => {
+    console.log('Manual refresh triggered');
     setIsLoading(true);
-    fetchData();
-  }, [fetchData]);
+    // Force fetch fresh data and price data
+    fetchPriceData(true);
+    fetchData(undefined, true);
+  }, [fetchData, fetchPriceData]);
 
-  // Initial data fetch - fetch price data first, then market data
+  // Initial data fetch - fetch price data first, then market data once
   useEffect(() => {
     const initializeData = async () => {
+      console.log('Initializing market data (one-time only)...');
       // Fetch price data first for immediate price display
-      await fetchPriceData();
-      // Then fetch market data
-      fetchData();
+      await fetchPriceData(true);
+      // Then fetch market data once for AI analysis
+      fetchData(undefined, true);
     };
     
     initializeData();
-  }, [fetchData, fetchPriceData]);
+  }, []); // Empty deps - only run once on mount
 
-  // Auto-refresh with different intervals based on timeframe
-  useEffect(() => {
-    const getRefreshInterval = (timeframe: BinanceInterval) => {
-      switch (timeframe) {
-        case '5m': return 300000; // 5 minutes
-        case '15m': return 900000; // 15 minutes
-        case '1h': return 3600000; // 1 hour
-        case '4h': return 14400000; // 4 hours
-        case '1d': return 86400000; // 1 day
-        default: return 300000;
-      }
-    };
-
-    const interval = setInterval(() => {
-      fetchData();
-    }, getRefreshInterval(currentTimeframe));
-
-    return () => clearInterval(interval);
-  }, [fetchData, currentTimeframe]);
+  // Remove auto-refresh timer since TradingView widget handles real-time data
+  // and WebSocket provides price updates
 
   // Re-run analysis when candleData changes
   useEffect(() => {
@@ -279,7 +276,6 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
   return {
     candleData,
     analysis,
-    indicatorArrays,
     isLoading,
     error,
     lastUpdate,

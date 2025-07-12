@@ -1,3 +1,5 @@
+import { binanceFetch } from './timeout-fetch';
+
 export type CandlestickData = [
   number,  // openTime
   string,  // open
@@ -55,10 +57,16 @@ export class BinanceDataFetcher {
   async fetchKlines(symbol = 'BTCUSDT', interval: BinanceInterval = '5m', limit = 100): Promise<ProcessedCandle[]> {
     try {
       const url = `${this.baseUrl}?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-      const response = await fetch(url);
+      console.log('Fetching klines from:', url);
+      
+      const response = await binanceFetch(url, {
+        method: 'GET'
+      });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.text();
+        console.error('Binance API error response:', errorData);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorData}`);
       }
       
       const data: CandlestickData[] = await response.json();
@@ -104,10 +112,16 @@ export class BinanceDataFetcher {
   async fetchLatestPrice(symbol = 'BTCUSDT'): Promise<number> {
     try {
       const url = `${this.baseUrl}?endpoint=price&symbol=${symbol}`;
-      const response = await fetch(url);
+      console.log('Fetching latest price from:', url);
+      
+      const response = await binanceFetch(url, {
+        method: 'GET'
+      });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.text();
+        console.error('Price API error response:', errorData);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorData}`);
       }
       
       const data = await response.json();
@@ -121,10 +135,16 @@ export class BinanceDataFetcher {
   async fetch24hrTicker(symbol = 'BTCUSDT'): Promise<TickerData> {
     try {
       const url = `${this.baseUrl}?endpoint=ticker&symbol=${symbol}`;
-      const response = await fetch(url);
+      console.log('Fetching 24hr ticker from:', url);
+      
+      const response = await binanceFetch(url, {
+        method: 'GET'
+      });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.text();
+        console.error('Ticker API error response:', errorData);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorData}`);
       }
       
       const data: TickerData = await response.json();

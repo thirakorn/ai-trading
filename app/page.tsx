@@ -1,36 +1,20 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { useMarketData } from '@/hooks/useMarketData';
-import { ProcessedCandle } from '@/lib/binance';
 import TradingChart, { TradingChartRef } from '@/components/TradingChart';
 import AnalysisPanel from '@/components/AnalysisPanel';
 import TimeframeSelector from '@/components/TimeframeSelector';
-import ChartTypeSelector, { ChartType } from '@/components/ChartTypeSelector';
 import RealTimePriceIndicator from '@/components/RealTimePriceIndicator';
 import AIToggle from '@/components/AIToggle';
-import VolumeProfileToggle from '@/components/VolumeProfileToggle';
-import IndicatorControls from '@/components/IndicatorControls';
 
 export default function Dashboard() {
-  const [chartType, setChartType] = useState<ChartType>('candlestick');
   const [useAI, setUseAI] = useState(false);
-  const [showVolumeProfile, setShowVolumeProfile] = useState(true);
-  const [showRSI, setShowRSI] = useState(false);
-  const [showMACD, setShowMACD] = useState(false);
   const chartRef = useRef<TradingChartRef>(null);
-
-  // Handle real-time candle updates
-  const handleCandleUpdate = useCallback((candle: ProcessedCandle) => {
-    if (chartRef.current) {
-      chartRef.current.updateCandle(candle);
-    }
-  }, []);
 
   const { 
     candleData, 
     analysis, 
-    indicatorArrays,
     isLoading, 
     error, 
     lastUpdate, 
@@ -44,7 +28,7 @@ export default function Dashboard() {
     indicators,
     refreshData, 
     changeTimeframe 
-  } = useMarketData(handleCandleUpdate);
+  } = useMarketData();
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -62,23 +46,6 @@ export default function Dashboard() {
               disabled={isLoading}
             />
             <div className="border-l border-gray-600 h-6"></div>
-            <ChartTypeSelector
-              currentChartType={chartType}
-              onChartTypeChange={setChartType}
-              disabled={isLoading}
-            />
-            <VolumeProfileToggle
-              enabled={showVolumeProfile}
-              onToggle={setShowVolumeProfile}
-              disabled={isLoading}
-            />
-            <IndicatorControls
-              showRSI={showRSI}
-              showMACD={showMACD}
-              onRSIToggle={setShowRSI}
-              onMACDToggle={setShowMACD}
-              disabled={isLoading}
-            />
             <TimeframeSelector
               currentTimeframe={currentTimeframe}
               onTimeframeChange={changeTimeframe}
@@ -134,7 +101,7 @@ export default function Dashboard() {
             <div className="bg-gray-800 rounded-lg p-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold">
-                  BTCUSD {currentTimeframe.toUpperCase()} Chart ({chartType === 'candlestick' ? 'Candlestick' : 'Line'})
+                  BTCUSD {currentTimeframe.toUpperCase()} Chart
                 </h2>
                 <div className="flex items-center space-x-2">
                   <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
@@ -143,36 +110,16 @@ export default function Dashboard() {
                   </span>
                 </div>
               </div>
-              {candleData.length > 0 ? (
-                <TradingChart 
-                  ref={chartRef}
-                  data={candleData} 
-                  chartType={chartType}
-                  currentTimeframe={currentTimeframe}
-                  supportLevel={analysis?.support || null}
-                  resistanceLevel={analysis?.resistance || null}
-                  stopLoss={analysis?.signals?.stopLoss || null}
-                  takeProfit={analysis?.signals?.takeProfit || null}
-                  showVolumeProfile={showVolumeProfile}
-                  showRSI={showRSI}
-                  showMACD={showMACD}
-                  indicatorData={indicatorArrays}
-                  height={500} 
-                />
-              ) : (
-                <div className="h-[500px] bg-gray-900 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    {isLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                        <p className="text-gray-400">Loading chart data...</p>
-                      </>
-                    ) : (
-                      <p className="text-gray-400">No chart data available</p>
-                    )}
-                  </div>
-                </div>
-              )}
+              <TradingChart 
+                ref={chartRef}
+                symbol="BINANCE:BTCUSDT"
+                currentTimeframe={currentTimeframe}
+                supportLevel={analysis?.support || null}
+                resistanceLevel={analysis?.resistance || null}
+                stopLoss={analysis?.signals?.stopLoss || null}
+                takeProfit={analysis?.signals?.takeProfit || null}
+                height={500} 
+              />
             </div>
 
             {/* Market Status */}

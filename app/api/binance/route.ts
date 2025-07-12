@@ -30,7 +30,9 @@ export async function GET(request: NextRequest) {
     const response = await fetch(apiUrl, {
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (compatible; BTC-Trading-Analyzer/1.0)',
       },
+      cache: 'no-store', // Disable caching for real-time data
     });
 
     if (!response.ok) {
@@ -49,8 +51,21 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching Binance data:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch data from Binance' },
-      { status: 500 }
+      { 
+        error: 'Failed to fetch data from Binance',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        endpoint: endpoint,
+        symbol: symbol,
+        interval: interval
+      },
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      }
     );
   }
 }
