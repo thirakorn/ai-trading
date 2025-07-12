@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const runtime = 'edge';
+
 export async function GET() {
   const startTime = Date.now();
   
@@ -26,9 +28,8 @@ export async function GET() {
         }
       },
       server: {
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-        nodeVersion: process.version
+        runtime: 'edge',
+        environment: 'cloudflare-pages'
       }
     };
 

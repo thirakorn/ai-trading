@@ -14,9 +14,10 @@ interface AnalysisPanelProps {
   candles?: ProcessedCandle[];
   indicators?: TechnicalIndicators | null;
   currentTimeframe?: BinanceInterval;
+  currentSymbol?: string;
 }
 
-export default function AnalysisPanel({ analysis, isLoading, useAI, candles, indicators, currentTimeframe }: AnalysisPanelProps) {
+export default function AnalysisPanel({ analysis, isLoading, useAI, candles, indicators, currentTimeframe, currentSymbol = 'BTCUSDT' }: AnalysisPanelProps) {
   const [expandedPattern, setExpandedPattern] = useState<string | null>(null);
 
   // Show AI analysis if enabled and data is available
@@ -27,6 +28,7 @@ export default function AnalysisPanel({ analysis, isLoading, useAI, candles, ind
         indicators={indicators || null} 
         isLoading={isLoading}
         currentTimeframe={currentTimeframe}
+        currentSymbol={currentSymbol}
       />
     );
   }
@@ -71,7 +73,7 @@ export default function AnalysisPanel({ analysis, isLoading, useAI, candles, ind
       {/* Price and Trend */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-xl font-bold text-white">BTCUSDT</h3>
+          <h3 className="text-xl font-bold text-white">{currentSymbol.replace('USDT', '/USDT')}</h3>
           <p className="text-2xl font-mono text-white">${analysis.currentPrice.toFixed(2)}</p>
         </div>
         <div className="text-right">

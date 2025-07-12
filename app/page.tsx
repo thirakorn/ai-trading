@@ -167,6 +167,7 @@ export default function Dashboard() {
               candles={candleData}
               indicators={indicators}
               currentTimeframe={currentTimeframe}
+              currentSymbol={currentSymbol}
             />
           </div>
         </div>

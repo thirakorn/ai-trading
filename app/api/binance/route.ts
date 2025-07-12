@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const runtime = 'edge';
+
 // Simple in-memory cache for production
 interface CacheEntry {
   data: unknown;

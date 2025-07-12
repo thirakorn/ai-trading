@@ -10,6 +10,7 @@ interface AIAnalysisPanelProps {
   indicators: TechnicalIndicators | null;
   isLoading?: boolean;
   currentTimeframe?: BinanceInterval;
+  currentSymbol?: string;
 }
 
 const timeframeOptions: { value: BinanceInterval; label: string; category: string }[] = [
@@ -44,13 +45,20 @@ const groupedOptions = timeframeOptions.reduce((acc, option) => {
   return acc;
 }, {} as Record<string, typeof timeframeOptions>);
 
-export default function AIAnalysisPanel({ candles, indicators, currentTimeframe = '5m' }: AIAnalysisPanelProps) {
+export default function AIAnalysisPanel({ candles, indicators, currentTimeframe = '5m', currentSymbol = 'BTCUSDT' }: AIAnalysisPanelProps) {
   const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
   const [isAILoading, setIsAILoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isAIAvailable, setIsAIAvailable] = useState(false);
   const [isInArtifacts, setIsInArtifacts] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState<BinanceInterval>(currentTimeframe);
+
+  // Clear results when symbol changes
+  useEffect(() => {
+    setAiResult(null);
+    setAiError(null);
+    console.log('Symbol changed to:', currentSymbol, '- clearing AI results');
+  }, [currentSymbol]);
 
   // Check AI availability on mount
   useEffect(() => {
@@ -83,7 +91,7 @@ export default function AIAnalysisPanel({ candles, indicators, currentTimeframe 
       
       if (selectedTimeframe !== currentTimeframe) {
         console.log(`Fetching ${selectedTimeframe} data for AI analysis...`);
-        analysisCandles = await binanceFetcher.fetchKlines('BTCUSDT', selectedTimeframe, 100);
+        analysisCandles = await binanceFetcher.fetchKlines(currentSymbol, selectedTimeframe, 100);
         analysisIndicators = TechnicalAnalysis.calculateAllIndicators(analysisCandles);
       }
       
@@ -135,8 +143,9 @@ export default function AIAnalysisPanel({ candles, indicators, currentTimeframe 
 
       {/* Control Panel */}
       <div className="space-y-4 mb-6">
-        {/* Current vs Selected Timeframe */}
+        {/* Current Symbol and Timeframe */}
         <div className="text-sm text-gray-400">
+          <div>Trading Pair: <span className="text-yellow-400 font-medium">{currentSymbol.replace('USDT', '/USDT')}</span></div>
           <div>Currently viewing: <span className="text-blue-400 font-medium">{currentTimeframe.toUpperCase()}</span></div>
           <div>Analyze timeframe: <span className="text-green-400 font-medium">{selectedTimeframe.toUpperCase()}</span></div>
         </div>
