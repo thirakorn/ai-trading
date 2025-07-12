@@ -3,6 +3,7 @@ import {
   ISeriesApi,
   Time,
   SeriesType,
+  IPriceLine,
 } from 'lightweight-charts';
 import { ProcessedCandle } from './binance';
 
@@ -175,10 +176,14 @@ export class VolumeProfileCalculator {
 export class VolumeProfileRenderer {
   private _data: VolumeProfileData;
   private _options: VolumeProfileOptions;
+  private _chart: IChartApi;
+  private _series: ISeriesApi<SeriesType>;
 
-  constructor(data: VolumeProfileData, options: VolumeProfileOptions) {
+  constructor(data: VolumeProfileData, options: VolumeProfileOptions, chart: IChartApi, series: ISeriesApi<SeriesType>) {
     this._data = data;
     this._options = options;
+    this._chart = chart;
+    this._series = series;
   }
 
   draw(ctx: CanvasRenderingContext2D, pixelRatio: number, width: number, height: number) {
@@ -245,8 +250,18 @@ export class VolumeProfileRenderer {
   }
 
   private priceToY(price: number, height: number): number {
-    // This is a simplified conversion - in real implementation,
-    // you'd use the chart's price scale to convert price to pixel
+    try {
+      // Use the series' price scale to convert price to pixel coordinate
+      const coordinate = this._series.priceToCoordinate(price);
+      
+      if (coordinate !== null) {
+        return coordinate;
+      }
+    } catch (error) {
+      console.warn('Error converting price to coordinate, using fallback:', error);
+    }
+    
+    // Fallback to simplified conversion
     const minPrice = Math.min(...this._data.profile.map(p => p.price));
     const maxPrice = Math.max(...this._data.profile.map(p => p.price));
     const priceRange = maxPrice - minPrice;
@@ -265,6 +280,9 @@ export class VolumeProfile {
   private _options: VolumeProfileOptions;
   private _candles: ProcessedCandle[] = [];
   private _isVisible: boolean = true;
+  private _pocLine: IPriceLine | null = null;
+  private _valueAreaHighLine: IPriceLine | null = null;
+  private _valueAreaLowLine: IPriceLine | null = null;
 
   constructor(
     chart: IChartApi,
@@ -287,12 +305,18 @@ export class VolumeProfile {
   updateData(candles: ProcessedCandle[]) {
     this._candles = candles;
     this.recalculate();
+    this.updatePriceLines();
   }
 
   setVisible(visible: boolean) {
     this._isVisible = visible;
-    // Trigger chart redraw
-    this._chart.timeScale().fitContent();
+    
+    // For price lines, we need to remove/add them instead of toggling visibility
+    if (visible) {
+      this.updatePriceLines(); // Re-add price lines if visible
+    } else {
+      this.removePriceLines(); // Remove price lines if not visible
+    }
   }
 
   getOptions(): VolumeProfileOptions {
@@ -318,11 +342,76 @@ export class VolumeProfile {
     console.log('Volume Profile calculated:', this._data);
   }
 
+  private updatePriceLines() {
+    if (!this._data || !this._isVisible) return;
+
+    try {
+      this.removePriceLines();
+
+      // Add POC line
+      if (this._options.showPOC && this._data.pointOfControl) {
+        this._pocLine = this._series.createPriceLine({
+          price: this._data.pointOfControl,
+          color: '#FFD700',
+          lineWidth: 2,
+          lineStyle: 0,
+          axisLabelVisible: true,
+          title: 'POC'
+        });
+      }
+
+      // Add Value Area lines
+      if (this._options.showValueArea) {
+        this._valueAreaHighLine = this._series.createPriceLine({
+          price: this._data.valueAreaHigh,
+          color: '#FFFFFF60',
+          lineWidth: 1,
+          lineStyle: 2, // Dashed
+          axisLabelVisible: false,
+          title: 'VA High'
+        });
+
+        this._valueAreaLowLine = this._series.createPriceLine({
+          price: this._data.valueAreaLow,
+          color: '#FFFFFF60',
+          lineWidth: 1,
+          lineStyle: 2, // Dashed
+          axisLabelVisible: false,
+          title: 'VA Low'
+        });
+      }
+
+      console.log('Volume Profile price lines updated');
+    } catch (error) {
+      console.error('Error updating volume profile price lines:', error);
+    }
+  }
+
+  private removePriceLines() {
+    if (this._pocLine) {
+      this._series.removePriceLine(this._pocLine);
+      this._pocLine = null;
+    }
+    if (this._valueAreaHighLine) {
+      this._series.removePriceLine(this._valueAreaHighLine);
+      this._valueAreaHighLine = null;
+    }
+    if (this._valueAreaLowLine) {
+      this._series.removePriceLine(this._valueAreaLowLine);
+      this._valueAreaLowLine = null;
+    }
+  }
+
   // Method to render on canvas (called by chart)
   render(ctx: CanvasRenderingContext2D, pixelRatio: number, width: number, height: number) {
     if (!this._isVisible || !this._data) return;
 
-    const renderer = new VolumeProfileRenderer(this._data, this._options);
+    const renderer = new VolumeProfileRenderer(this._data, this._options, this._chart, this._series);
     renderer.draw(ctx, pixelRatio, width, height);
+  }
+
+  // Cleanup method
+  destroy() {
+    this.removePriceLines();
   }
 }

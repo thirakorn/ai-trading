@@ -27,6 +27,28 @@ export type BinanceInterval =
   '1h' | '2h' | '4h' | '6h' | '8h' | '12h' | 
   '1d' | '3d' | '1w' | '1M';
 
+export interface TickerData {
+  symbol: string;
+  priceChange: string;
+  priceChangePercent: string;
+  weightedAvgPrice: string;
+  prevClosePrice: string;
+  lastPrice: string;
+  lastQty: string;
+  bidPrice: string;
+  askPrice: string;
+  openPrice: string;
+  highPrice: string;
+  lowPrice: string;
+  volume: string;
+  quoteVolume: string;
+  openTime: number;
+  closeTime: number;
+  firstId: number;
+  lastId: number;
+  count: number;
+}
+
 export class BinanceDataFetcher {
   private readonly baseUrl = '/api/binance';
   
@@ -81,7 +103,7 @@ export class BinanceDataFetcher {
   
   async fetchLatestPrice(symbol = 'BTCUSDT'): Promise<number> {
     try {
-      const url = `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`;
+      const url = `${this.baseUrl}?endpoint=price&symbol=${symbol}`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -92,6 +114,30 @@ export class BinanceDataFetcher {
       return parseFloat(data.price);
     } catch (error) {
       console.error('Error fetching latest price:', error);
+      throw error;
+    }
+  }
+
+  async fetch24hrTicker(symbol = 'BTCUSDT'): Promise<TickerData> {
+    try {
+      const url = `${this.baseUrl}?endpoint=ticker&symbol=${symbol}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data: TickerData = await response.json();
+      console.log('24hr ticker data fetched:', {
+        symbol: data.symbol,
+        lastPrice: data.lastPrice,
+        priceChange: data.priceChange,
+        priceChangePercent: data.priceChangePercent
+      });
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching 24hr ticker:', error);
       throw error;
     }
   }

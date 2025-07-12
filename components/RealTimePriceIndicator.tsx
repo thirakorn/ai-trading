@@ -3,6 +3,7 @@
 interface RealTimePriceIndicatorProps {
   currentPrice: number | null;
   priceChange: number;
+  priceChangePercent: number;
   isConnected: boolean;
   symbol?: string;
 }
@@ -10,6 +11,7 @@ interface RealTimePriceIndicatorProps {
 export default function RealTimePriceIndicator({ 
   currentPrice, 
   priceChange, 
+  priceChangePercent,
   isConnected, 
   symbol = 'BTCUSDT' 
 }: RealTimePriceIndicatorProps) {
@@ -64,7 +66,7 @@ export default function RealTimePriceIndicator({
                     ${Math.abs(priceChange).toFixed(2)}
                   </span>
                   <span className="text-xs">
-                    ({priceChange > 0 ? '+' : ''}{((priceChange / (currentPrice - priceChange)) * 100).toFixed(2)}%)
+                    ({priceChangePercent > 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%)
                   </span>
                 </div>
               </>
@@ -77,7 +79,7 @@ export default function RealTimePriceIndicator({
         <div className="text-right">
           <div className="text-xs text-gray-400 mb-1">24h Change</div>
           <div className={`text-lg font-bold ${getPriceChangeColor()}`}>
-            {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)}
+            {priceChangePercent > 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%
           </div>
         </div>
       </div>

@@ -10,11 +10,14 @@ import ChartTypeSelector, { ChartType } from '@/components/ChartTypeSelector';
 import RealTimePriceIndicator from '@/components/RealTimePriceIndicator';
 import AIToggle from '@/components/AIToggle';
 import VolumeProfileToggle from '@/components/VolumeProfileToggle';
+import IndicatorControls from '@/components/IndicatorControls';
 
 export default function Dashboard() {
   const [chartType, setChartType] = useState<ChartType>('candlestick');
   const [useAI, setUseAI] = useState(false);
-  const [showVolumeProfile, setShowVolumeProfile] = useState(false);
+  const [showVolumeProfile, setShowVolumeProfile] = useState(true);
+  const [showRSI, setShowRSI] = useState(false);
+  const [showMACD, setShowMACD] = useState(false);
   const chartRef = useRef<TradingChartRef>(null);
 
   // Handle real-time candle updates
@@ -27,6 +30,7 @@ export default function Dashboard() {
   const { 
     candleData, 
     analysis, 
+    indicatorArrays,
     isLoading, 
     error, 
     lastUpdate, 
@@ -34,6 +38,7 @@ export default function Dashboard() {
     isConnected,
     currentPrice,
     priceChange,
+    priceChangePercent,
     wsError,
     connectionState,
     indicators,
@@ -65,6 +70,13 @@ export default function Dashboard() {
             <VolumeProfileToggle
               enabled={showVolumeProfile}
               onToggle={setShowVolumeProfile}
+              disabled={isLoading}
+            />
+            <IndicatorControls
+              showRSI={showRSI}
+              showMACD={showMACD}
+              onRSIToggle={setShowRSI}
+              onMACDToggle={setShowMACD}
               disabled={isLoading}
             />
             <TimeframeSelector
@@ -114,6 +126,7 @@ export default function Dashboard() {
             <RealTimePriceIndicator
               currentPrice={currentPrice}
               priceChange={priceChange}
+              priceChangePercent={priceChangePercent}
               isConnected={isConnected}
               symbol="BTCUSDT"
             />
@@ -138,10 +151,12 @@ export default function Dashboard() {
                   currentTimeframe={currentTimeframe}
                   supportLevel={analysis?.support || null}
                   resistanceLevel={analysis?.resistance || null}
-                  entryPrice={analysis?.signals?.entryPrice || null}
                   stopLoss={analysis?.signals?.stopLoss || null}
                   takeProfit={analysis?.signals?.takeProfit || null}
                   showVolumeProfile={showVolumeProfile}
+                  showRSI={showRSI}
+                  showMACD={showMACD}
+                  indicatorData={indicatorArrays}
                   height={500} 
                 />
               ) : (

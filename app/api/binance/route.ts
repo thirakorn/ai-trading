@@ -5,16 +5,33 @@ export async function GET(request: NextRequest) {
   const symbol = searchParams.get('symbol') || 'BTCUSDT';
   const interval = searchParams.get('interval') || '5m';
   const limit = searchParams.get('limit') || '100';
+  const endpoint = searchParams.get('endpoint') || 'klines'; // Add endpoint parameter
 
   try {
-    const response = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    let apiUrl: string;
+    
+    // Support different Binance API endpoints
+    switch (endpoint) {
+      case 'ticker':
+        // 24hr ticker statistics
+        apiUrl = `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`;
+        break;
+      case 'price':
+        // Current price only
+        apiUrl = `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`;
+        break;
+      case 'klines':
+      default:
+        // Historical klines data
+        apiUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+        break;
+    }
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

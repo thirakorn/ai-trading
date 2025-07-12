@@ -7,6 +7,7 @@ import {
   ISeriesApi, 
   CandlestickSeries,
   LineSeries,
+  HistogramSeries,
   ColorType,
   Time,
   IPriceLine
@@ -14,6 +15,7 @@ import {
 import { ProcessedCandle } from '@/lib/binance';
 import { ChartType } from './ChartTypeSelector';
 import { VolumeProfile } from '@/lib/volume-profile-plugin';
+import { IndicatorArrays } from '@/lib/technical-analysis';
 
 interface TradingChartProps {
   data: ProcessedCandle[];
@@ -21,10 +23,12 @@ interface TradingChartProps {
   currentTimeframe: string;
   supportLevel?: number | null;
   resistanceLevel?: number | null;
-  entryPrice?: number | null;
   stopLoss?: number | null;
   takeProfit?: number | null;
   showVolumeProfile?: boolean;
+  showRSI?: boolean;
+  showMACD?: boolean;
+  indicatorData?: IndicatorArrays | null;
   width?: number;
   height?: number;
 }
@@ -39,10 +43,12 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
   currentTimeframe, 
   supportLevel, 
   resistanceLevel,
-  entryPrice,
   stopLoss,
   takeProfit,
-  showVolumeProfile = false,
+  showVolumeProfile = true,
+  showRSI = false,
+  showMACD = false,
+  indicatorData = null,
   height = 400 
 }, ref) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -50,9 +56,17 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
   const seriesRef = useRef<ISeriesApi<'Line'> | ISeriesApi<'Candlestick'> | null>(null);
   const supportPriceLineRef = useRef<IPriceLine | null>(null);
   const resistancePriceLineRef = useRef<IPriceLine | null>(null);
-  const entryPriceLineRef = useRef<IPriceLine | null>(null);
   const stopLossPriceLineRef = useRef<IPriceLine | null>(null);
   const takeProfitPriceLineRef = useRef<IPriceLine | null>(null);
+  
+  // Indicator series refs
+  const rsiSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const rsiLevel30Ref = useRef<IPriceLine | null>(null);
+  const rsiLevel70Ref = useRef<IPriceLine | null>(null);
+  const macdSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const macdSignalSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const macdHistogramSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  const macdZeroLineRef = useRef<IPriceLine | null>(null);
   const volumeProfileRef = useRef<VolumeProfile | null>(null);
   const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false);
   const lastUpdateTimeRef = useRef<number>(0);
@@ -130,10 +144,6 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
     if (!seriesRef.current) return;
 
     // Remove existing trading signal price lines
-    if (entryPriceLineRef.current) {
-      seriesRef.current.removePriceLine(entryPriceLineRef.current);
-      entryPriceLineRef.current = null;
-    }
     if (stopLossPriceLineRef.current) {
       seriesRef.current.removePriceLine(stopLossPriceLineRef.current);
       stopLossPriceLineRef.current = null;
@@ -141,23 +151,6 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
     if (takeProfitPriceLineRef.current) {
       seriesRef.current.removePriceLine(takeProfitPriceLineRef.current);
       takeProfitPriceLineRef.current = null;
-    }
-
-    // Add entry price line if exists
-    if (entryPrice && entryPrice > 0) {
-      try {
-        entryPriceLineRef.current = seriesRef.current.createPriceLine({
-          price: entryPrice,
-          color: '#3B82F6',
-          lineWidth: 2,
-          lineStyle: 0, // Solid line
-          axisLabelVisible: true,
-          title: 'Entry'
-        });
-        console.log('Entry price line created at:', entryPrice);
-      } catch (error) {
-        console.error('Error creating entry price line:', error);
-      }
     }
 
     // Add stop loss line if exists
@@ -193,7 +186,7 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
         console.error('Error creating take profit line:', error);
       }
     }
-  }, [entryPrice, stopLoss, takeProfit]);
+  }, [stopLoss, takeProfit]);
 
   const removeSupportResistanceLines = () => {
     if (!seriesRef.current) return;
@@ -220,15 +213,6 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
   const removeTradingSignalLines = () => {
     if (!seriesRef.current) return;
     
-    if (entryPriceLineRef.current) {
-      try {
-        seriesRef.current.removePriceLine(entryPriceLineRef.current);
-        entryPriceLineRef.current = null;
-      } catch (error) {
-        console.warn('Error removing entry price line:', error);
-      }
-    }
-    
     if (stopLossPriceLineRef.current) {
       try {
         seriesRef.current.removePriceLine(stopLossPriceLineRef.current);
@@ -248,7 +232,76 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
     }
   };
 
-  const initializeVolumeProfile = () => {
+  const removeIndicatorSeries = () => {
+    if (!chartRef.current) return;
+    
+    // Remove RSI series and lines
+    if (rsiLevel30Ref.current && rsiSeriesRef.current) {
+      try {
+        rsiSeriesRef.current.removePriceLine(rsiLevel30Ref.current);
+        rsiLevel30Ref.current = null;
+      } catch (error) {
+        console.warn('Error removing RSI 30 line:', error);
+      }
+    }
+    
+    if (rsiLevel70Ref.current && rsiSeriesRef.current) {
+      try {
+        rsiSeriesRef.current.removePriceLine(rsiLevel70Ref.current);
+        rsiLevel70Ref.current = null;
+      } catch (error) {
+        console.warn('Error removing RSI 70 line:', error);
+      }
+    }
+    
+    if (rsiSeriesRef.current) {
+      try {
+        chartRef.current.removeSeries(rsiSeriesRef.current);
+        rsiSeriesRef.current = null;
+      } catch (error) {
+        console.warn('Error removing RSI series:', error);
+      }
+    }
+    
+    // Remove MACD series and lines
+    if (macdZeroLineRef.current && macdSeriesRef.current) {
+      try {
+        macdSeriesRef.current.removePriceLine(macdZeroLineRef.current);
+        macdZeroLineRef.current = null;
+      } catch (error) {
+        console.warn('Error removing MACD zero line:', error);
+      }
+    }
+    
+    if (macdSeriesRef.current) {
+      try {
+        chartRef.current.removeSeries(macdSeriesRef.current);
+        macdSeriesRef.current = null;
+      } catch (error) {
+        console.warn('Error removing MACD series:', error);
+      }
+    }
+    
+    if (macdSignalSeriesRef.current) {
+      try {
+        chartRef.current.removeSeries(macdSignalSeriesRef.current);
+        macdSignalSeriesRef.current = null;
+      } catch (error) {
+        console.warn('Error removing MACD signal series:', error);
+      }
+    }
+    
+    if (macdHistogramSeriesRef.current) {
+      try {
+        chartRef.current.removeSeries(macdHistogramSeriesRef.current);
+        macdHistogramSeriesRef.current = null;
+      } catch (error) {
+        console.warn('Error removing MACD histogram series:', error);
+      }
+    }
+  };
+
+  const initializeVolumeProfile = useCallback(() => {
     if (!chartRef.current || !seriesRef.current) return;
 
     try {
@@ -261,9 +314,85 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
         showValueArea: true
       });
       
+      // Add canvas overlay for volume profile rendering
+      setupVolumeProfileCanvas();
+      
       console.log('Volume Profile initialized');
     } catch (error) {
       console.error('Error initializing volume profile:', error);
+    }
+  }, []);
+
+  const setupVolumeProfileCanvas = () => {
+    if (!chartContainerRef.current || !chartRef.current || !volumeProfileRef.current) return;
+
+    try {
+      // Get the chart container
+      const chartContainer = chartContainerRef.current;
+      
+      // Create overlay canvas
+      const overlay = document.createElement('canvas');
+      overlay.style.position = 'absolute';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.pointerEvents = 'none';
+      overlay.style.zIndex = '1';
+      
+      // Add to container
+      chartContainer.appendChild(overlay);
+      
+      // Setup rendering with improved bounds checking
+      const renderVolumeProfile = () => {
+        const ctx = overlay.getContext('2d');
+        if (!ctx || !volumeProfileRef.current) return;
+        
+        // Get chart container dimensions with bounds checking
+        const rect = chartContainer.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) {
+          console.warn('Invalid chart container dimensions:', rect);
+          return;
+        }
+        
+        const pixelRatio = window.devicePixelRatio || 1;
+        
+        // Set canvas size with proper pixel ratio
+        overlay.width = Math.max(1, rect.width * pixelRatio);
+        overlay.height = Math.max(1, rect.height * pixelRatio);
+        overlay.style.width = rect.width + 'px';
+        overlay.style.height = rect.height + 'px';
+        
+        // Clear canvas before rendering
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        
+        // Only render if volume profile is visible and has data
+        if (volumeProfileRef.current.getData()) {
+          volumeProfileRef.current.render(ctx, pixelRatio, overlay.width, overlay.height);
+        }
+      };
+      
+      // Initial render
+      renderVolumeProfile();
+      
+      // Re-render on chart updates
+      const handleResize = () => {
+        requestAnimationFrame(renderVolumeProfile);
+      };
+      
+      window.addEventListener('resize', handleResize);
+      
+      // Store cleanup function
+      const cleanup = () => {
+        window.removeEventListener('resize', handleResize);
+        if (overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+      };
+      
+      // Store for later cleanup
+      (volumeProfileRef.current as VolumeProfile & { _cleanup?: () => void })._cleanup = cleanup;
+      
+    } catch (error) {
+      console.error('Error setting up volume profile canvas:', error);
     }
   };
 
@@ -273,11 +402,243 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
     try {
       volumeProfileRef.current.updateData(data);
       volumeProfileRef.current.setVisible(showVolumeProfile);
+      
+      // Trigger canvas re-render
+      triggerVolumeProfileRender();
+      
       console.log('Volume Profile updated with', data.length, 'candles');
     } catch (error) {
       console.error('Error updating volume profile:', error);
     }
   }, [data, showVolumeProfile]);
+
+  const triggerVolumeProfileRender = () => {
+    if (!chartContainerRef.current || !chartRef.current || !volumeProfileRef.current) return;
+    
+    // Find the overlay canvas and trigger re-render
+    const chartContainer = chartContainerRef.current;
+    const overlay = chartContainer.querySelector('canvas[style*="position: absolute"]') as HTMLCanvasElement;
+    
+    if (overlay) {
+      const ctx = overlay.getContext('2d');
+      if (ctx) {
+        // Get current dimensions with bounds checking
+        const rect = chartContainer.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+        
+        const pixelRatio = window.devicePixelRatio || 1;
+        
+        // Resize canvas if needed
+        const expectedWidth = rect.width * pixelRatio;
+        const expectedHeight = rect.height * pixelRatio;
+        
+        if (overlay.width !== expectedWidth || overlay.height !== expectedHeight) {
+          overlay.width = expectedWidth;
+          overlay.height = expectedHeight;
+          overlay.style.width = rect.width + 'px';
+          overlay.style.height = rect.height + 'px';
+        }
+        
+        // Clear and render
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        
+        // Only render if volume profile has data
+        if (volumeProfileRef.current.getData()) {
+          volumeProfileRef.current.render(ctx, pixelRatio, overlay.width, overlay.height);
+        }
+      }
+    }
+  };
+
+  // Scale RSI values to fit on price chart
+  const scaleRSIToPriceChart = useCallback((rsiData: IndicatorArrays['rsi'], priceRange: {min: number, max: number}) => {
+    if (!rsiData || rsiData.length === 0) return [];
+    
+    // Validate price range
+    if (priceRange.max <= priceRange.min) {
+      console.warn('Invalid price range for RSI scaling:', priceRange);
+      return [];
+    }
+    
+    const chartRange = priceRange.max - priceRange.min;
+    const rsiDisplayHeight = chartRange * 0.25; // Use 25% of price range for RSI
+    const rsiTopPosition = priceRange.max - (chartRange * 0.02); // Position RSI near top with small margin
+    
+    return rsiData.map(point => ({
+      time: point.time,
+      value: rsiTopPosition - ((point.value / 100) * rsiDisplayHeight) // Invert RSI (100 at top)
+    }));
+  }, []);
+
+  // Scale MACD values to fit on price chart
+  const scaleMACDToPriceChart = useCallback((macdData: IndicatorArrays['macd'], priceRange: {min: number, max: number}) => {
+    if (!macdData || !macdData.macd || macdData.macd.length === 0) return { macd: [], signal: [], histogram: [] };
+    
+    // Validate price range
+    if (priceRange.max <= priceRange.min) {
+      console.warn('Invalid price range for MACD scaling:', priceRange);
+      return { macd: [], signal: [], histogram: [] };
+    }
+    
+    // Find MACD value range with better edge case handling
+    const allMacdValues = [
+      ...macdData.macd.map(p => p.value).filter(v => !isNaN(v) && isFinite(v)),
+      ...macdData.signal.map(p => p.value).filter(v => !isNaN(v) && isFinite(v)),
+      ...macdData.histogram.map(p => p.value).filter(v => !isNaN(v) && isFinite(v))
+    ];
+    
+    if (allMacdValues.length === 0) {
+      console.warn('No valid MACD values found');
+      return { macd: [], signal: [], histogram: [] };
+    }
+    
+    const macdMin = Math.min(...allMacdValues);
+    const macdMax = Math.max(...allMacdValues);
+    let macdRange = macdMax - macdMin;
+    
+    // Handle edge case where all values are the same
+    if (macdRange === 0) {
+      macdRange = Math.abs(macdMax) || 1; // Use absolute value or default to 1
+    }
+    
+    const chartRange = priceRange.max - priceRange.min;
+    const macdDisplayHeight = chartRange * 0.2; // Use 20% of price range for MACD
+    const macdBottomPosition = priceRange.min + (chartRange * 0.05); // Position MACD near bottom
+    
+    const scaleValue = (value: number) => {
+      if (!isFinite(value) || isNaN(value)) return macdBottomPosition;
+      
+      const normalizedValue = (value - macdMin) / macdRange;
+      return macdBottomPosition + (normalizedValue * macdDisplayHeight);
+    };
+    
+    return {
+      macd: macdData.macd.map(point => ({
+        time: point.time,
+        value: scaleValue(point.value)
+      })),
+      signal: macdData.signal.map(point => ({
+        time: point.time,
+        value: scaleValue(point.value)
+      })),
+      histogram: macdData.histogram.map(point => ({
+        time: point.time,
+        value: scaleValue(point.value)
+      }))
+    };
+  }, []);
+
+  // Calculate price range for scaling
+  const getPriceRange = useCallback(() => {
+    if (data.length === 0) return { min: 0, max: 1 };
+    
+    const prices = data.flatMap(candle => [candle.high, candle.low]);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    
+    return { min, max };
+  }, [data]);
+
+  // Update indicator series
+  const updateIndicators = useCallback(() => {
+    if (!chartRef.current || !indicatorData) return;
+    
+    // Ensure series are initialized before updating
+    if (showRSI && !rsiSeriesRef.current) {
+      console.warn('RSI series not initialized, skipping update');
+      return;
+    }
+    
+    if (showMACD && (!macdSeriesRef.current || !macdSignalSeriesRef.current || !macdHistogramSeriesRef.current)) {
+      console.warn('MACD series not fully initialized, skipping update');
+      return;
+    }
+    
+    const priceRange = getPriceRange();
+    
+    // Update RSI with error handling
+    if (showRSI && indicatorData.rsi && rsiSeriesRef.current) {
+      try {
+        const scaledRSI = scaleRSIToPriceChart(indicatorData.rsi, priceRange);
+        if (scaledRSI.length > 0) {
+          rsiSeriesRef.current.setData(scaledRSI);
+        
+          // Add RSI reference lines (30 and 70 levels) using same scaling as RSI data
+        const chartRange = priceRange.max - priceRange.min;
+        const rsiDisplayHeight = chartRange * 0.25;
+        const rsiTopPosition = priceRange.max - (chartRange * 0.02);
+        
+        const rsi30Value = rsiTopPosition - ((30 / 100) * rsiDisplayHeight); // RSI 30 level
+        const rsi70Value = rsiTopPosition - ((70 / 100) * rsiDisplayHeight); // RSI 70 level
+        
+        if (!rsiLevel30Ref.current) {
+          rsiLevel30Ref.current = rsiSeriesRef.current.createPriceLine({
+            price: rsi30Value,
+            color: '#FFA500',
+            lineWidth: 1,
+            lineStyle: 2, // Dotted line
+            axisLabelVisible: false,
+            title: ''
+          });
+        }
+        
+        if (!rsiLevel70Ref.current) {
+          rsiLevel70Ref.current = rsiSeriesRef.current.createPriceLine({
+            price: rsi70Value,
+            color: '#FFA500',
+            lineWidth: 1,
+            lineStyle: 2, // Dotted line
+            axisLabelVisible: false,
+            title: ''
+          });
+        }
+        }
+      } catch (error) {
+        console.error('Error updating RSI:', error);
+      }
+    }
+    
+    // Update MACD with error handling
+    if (showMACD && indicatorData.macd && macdSeriesRef.current && macdSignalSeriesRef.current && macdHistogramSeriesRef.current) {
+      try {
+        const scaledMACD = scaleMACDToPriceChart(indicatorData.macd, priceRange);
+        
+        if (scaledMACD.macd.length > 0) {
+          macdSeriesRef.current.setData(scaledMACD.macd);
+          macdSignalSeriesRef.current.setData(scaledMACD.signal);
+          macdHistogramSeriesRef.current.setData(scaledMACD.histogram);
+        
+        // Add MACD zero line using same scaling as MACD data
+        // Calculate zero line position based on MACD value range
+        const allMacdValues = [
+          ...scaledMACD.macd.map(p => p.value),
+          ...scaledMACD.signal.map(p => p.value),
+          ...scaledMACD.histogram.map(p => p.value)
+        ];
+        const macdDisplayMin = Math.min(...allMacdValues);
+        const macdDisplayMax = Math.max(...allMacdValues);
+        
+        // Zero line should be proportionally positioned within MACD display area
+        const zeroValue = macdDisplayMin + ((macdDisplayMax - macdDisplayMin) * 0.5);
+        
+        if (!macdZeroLineRef.current) {
+          macdZeroLineRef.current = macdSeriesRef.current.createPriceLine({
+            price: zeroValue,
+            color: '#666666',
+            lineWidth: 1,
+            lineStyle: 2, // Dotted line
+            axisLabelVisible: false,
+            title: ''
+          });
+        }
+        }
+      } catch (error) {
+        console.error('Error updating MACD:', error);
+      }
+    }
+    
+    console.log('Indicators updated:', { showRSI, showMACD, rsiLength: indicatorData.rsi?.length, macdLength: indicatorData.macd?.macd?.length });
+  }, [indicatorData, showRSI, showMACD, scaleRSIToPriceChart, scaleMACDToPriceChart, getPriceRange]);
 
   // Expose update methods to parent
   useImperativeHandle(ref, () => ({
@@ -367,6 +728,15 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
     return () => {
       window.removeEventListener('resize', handleResize);
       try {
+        // Cleanup volume profile
+        if (volumeProfileRef.current) {
+          const vpWithCleanup = volumeProfileRef.current as VolumeProfile & { _cleanup?: () => void };
+          if (vpWithCleanup._cleanup) {
+            vpWithCleanup._cleanup();
+          }
+          volumeProfileRef.current.destroy();
+          volumeProfileRef.current = null;
+        }
         if (chart) {
           chart.remove();
         }
@@ -385,6 +755,17 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
     // Remove all price lines before removing series
     removeSupportResistanceLines();
     removeTradingSignalLines();
+    removeIndicatorSeries();
+    
+    // Cleanup volume profile before chart type change
+    if (volumeProfileRef.current) {
+      const vpWithCleanup = volumeProfileRef.current as VolumeProfile & { _cleanup?: () => void };
+      if (vpWithCleanup._cleanup) {
+        vpWithCleanup._cleanup();
+      }
+      volumeProfileRef.current.destroy();
+      volumeProfileRef.current = null;
+    }
 
     // Remove existing series
     if (seriesRef.current) {
@@ -419,12 +800,46 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
         seriesRef.current = candlestickSeries;
       }
 
+      // Add indicator series with error handling
+      try {
+        if (showRSI) {
+          rsiSeriesRef.current = chartRef.current.addSeries(LineSeries, {
+            color: '#FFAA00',
+            lineWidth: 2,
+            title: 'RSI'
+          });
+          console.log('RSI series initialized');
+        }
+        
+        if (showMACD) {
+          macdSeriesRef.current = chartRef.current.addSeries(LineSeries, {
+            color: '#2196F3',
+            lineWidth: 2,
+            title: 'MACD'
+          });
+          
+          macdSignalSeriesRef.current = chartRef.current.addSeries(LineSeries, {
+            color: '#F44336',
+            lineWidth: 2,
+            title: 'Signal'
+          });
+          
+          macdHistogramSeriesRef.current = chartRef.current.addSeries(HistogramSeries, {
+            color: '#4CAF50',
+            title: 'Histogram'
+          });
+          console.log('MACD series initialized');
+        }
+      } catch (error) {
+        console.error('Error initializing indicator series:', error);
+      }
+
       // Initialize volume profile after series is created
       initializeVolumeProfile();
     } catch (error) {
       console.error('Error adding series:', error);
     }
-  }, [chartType]);
+  }, [chartType, showRSI, showMACD, initializeVolumeProfile]);
 
   // Reset data loaded flag when timeframe changes
   useEffect(() => {
@@ -444,10 +859,10 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
   // Update trading signal lines when TP/SL data changes
   useEffect(() => {
     if (seriesRef.current && isInitialDataLoaded) {
-      console.log('Updating trading signal lines:', { entryPrice, stopLoss, takeProfit });
+      console.log('Updating trading signal lines:', { stopLoss, takeProfit });
       updateTradingSignalLines();
     }
-  }, [entryPrice, stopLoss, takeProfit, isInitialDataLoaded, updateTradingSignalLines]);
+  }, [stopLoss, takeProfit, isInitialDataLoaded, updateTradingSignalLines]);
 
   // Update volume profile when data or visibility changes
   useEffect(() => {
@@ -455,6 +870,13 @@ const TradingChart = forwardRef<TradingChartRef, TradingChartProps>(({
       updateVolumeProfile();
     }
   }, [data, showVolumeProfile, isInitialDataLoaded, updateVolumeProfile]);
+
+  // Update indicators when data or visibility changes
+  useEffect(() => {
+    if (isInitialDataLoaded && indicatorData) {
+      updateIndicators();
+    }
+  }, [indicatorData, showRSI, showMACD, isInitialDataLoaded, updateIndicators]);
 
   // Load data when timeframe changes or initial load (use setData for timeframe switching)
   useEffect(() => {

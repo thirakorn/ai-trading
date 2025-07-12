@@ -119,8 +119,15 @@ export class BinanceWebSocket {
           
           if (data.e === 'kline') {
             this.onKlineUpdate?.(data as WebSocketKlineData);
-            // Extract price data for ticker simulation
+            // Extract price data for ticker simulation with realistic change calculation
             if (data.k && data.k.c) {
+              const currentPrice = parseFloat(data.k.c);
+              const openPrice = parseFloat(data.k.o);
+              
+              // Calculate price change and percentage
+              const priceChange = currentPrice - openPrice;
+              const priceChangePercent = openPrice > 0 ? (priceChange / openPrice) * 100 : 0;
+              
               const tickerData: WebSocketTickerData = {
                 e: '24hrTicker',
                 E: data.E,
@@ -129,8 +136,8 @@ export class BinanceWebSocket {
                 o: data.k.o, // Open price
                 h: data.k.h, // High price
                 l: data.k.l, // Low price
-                P: '0.00', // Price change percent (placeholder)
-                p: '0.00'  // Price change (placeholder)
+                P: priceChangePercent.toFixed(2), // Price change percent (calculated)
+                p: priceChange.toFixed(2)  // Price change (calculated)
               };
               this.onTickerUpdate?.(tickerData);
             }

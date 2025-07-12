@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { binanceFetcher, ProcessedCandle, BinanceInterval } from '@/lib/binance';
+import { binanceFetcher, ProcessedCandle, BinanceInterval, TickerData } from '@/lib/binance';
 import { AIAnalyzer, MarketAnalysis } from '@/lib/ai-analyzer';
 import { generateMockData } from '@/lib/mock-data';
 import { createBinanceWebSocket, WebSocketKlineData, WebSocketTickerData } from '@/lib/websocket';
+import { TechnicalAnalysis, IndicatorArrays } from '@/lib/technical-analysis';
 
 export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void) {
   const [candleData, setCandleData] = useState<ProcessedCandle[]>([]);
   const [analysis, setAnalysis] = useState<MarketAnalysis | null>(null);
+  const [indicatorArrays, setIndicatorArrays] = useState<IndicatorArrays | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -16,11 +18,36 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
   const [isConnected, setIsConnected] = useState(false);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [priceChange, setPriceChange] = useState<number>(0);
+  const [priceChangePercent, setPriceChangePercent] = useState<number>(0);
+  const [tickerData, setTickerData] = useState<TickerData | null>(null);
   const [wsError, setWsError] = useState<string | null>(null);
   const [connectionState, setConnectionState] = useState<string>('Not initialized');
 
   const wsRef = useRef<ReturnType<typeof createBinanceWebSocket> | null>(null);
   const onCandleUpdateRef = useRef(onCandleUpdate);
+
+  // Fetch initial price and ticker data
+  const fetchPriceData = useCallback(async () => {
+    try {
+      console.log('Fetching initial price data...');
+      
+      // Fetch 24hr ticker data for current price and changes
+      const ticker = await binanceFetcher.fetch24hrTicker('BTCUSDT');
+      setTickerData(ticker);
+      setCurrentPrice(parseFloat(ticker.lastPrice));
+      setPriceChange(parseFloat(ticker.priceChange));
+      setPriceChangePercent(parseFloat(ticker.priceChangePercent));
+      
+      console.log('Initial price data fetched:', {
+        currentPrice: ticker.lastPrice,
+        priceChange: ticker.priceChange,
+        priceChangePercent: ticker.priceChangePercent
+      });
+    } catch (error) {
+      console.error('Error fetching initial price data:', error);
+      // Don't throw, just log - WebSocket might provide updates later
+    }
+  }, []);
 
   const fetchData = useCallback(async (timeframe?: BinanceInterval) => {
     try {
@@ -33,11 +60,23 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
       console.log('Candles fetched:', candles.length);
       setCandleData(candles);
       
+      // Set current price from latest candle if not already set
+      if (candles.length > 0 && !currentPrice) {
+        const latestCandle = candles[candles.length - 1];
+        setCurrentPrice(latestCandle.close);
+        console.log('Current price set from candles:', latestCandle.close);
+      }
+      
       // Analyze the data
       if (candles.length > 0) {
         const marketAnalysis = AIAnalyzer.analyzeMarket(candles);
         console.log('Analysis completed:', marketAnalysis);
         setAnalysis(marketAnalysis);
+        
+        // Calculate indicator arrays
+        const indicators = TechnicalAnalysis.calculateIndicatorArrays(candles);
+        console.log('Indicator arrays calculated:', indicators);
+        setIndicatorArrays(indicators);
       }
       
       setLastUpdate(new Date());
@@ -53,13 +92,17 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
       if (mockCandles.length > 0) {
         const marketAnalysis = AIAnalyzer.analyzeMarket(mockCandles);
         setAnalysis(marketAnalysis);
+        
+        // Calculate indicator arrays for mock data
+        const indicators = TechnicalAnalysis.calculateIndicatorArrays(mockCandles);
+        setIndicatorArrays(indicators);
       }
       
       setLastUpdate(new Date());
     } finally {
       setIsLoading(false);
     }
-  }, [currentTimeframe]);
+  }, [currentTimeframe, currentPrice]);
 
   // Update ref when callback changes
   useEffect(() => {
@@ -110,10 +153,18 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
   const handleTickerUpdate = useCallback((data: WebSocketTickerData) => {
     const price = parseFloat(data.c);
     const change = parseFloat(data.p);
+    const changePercent = parseFloat(data.P);
     
     setCurrentPrice(price);
     setPriceChange(change);
+    setPriceChangePercent(changePercent);
     setLastUpdate(new Date());
+    
+    console.log('Ticker update:', {
+      price,
+      change,
+      changePercent: changePercent.toFixed(2) + '%'
+    });
   }, []);
 
   const handleConnectionChange = useCallback((connected: boolean) => {
@@ -177,10 +228,17 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
     fetchData();
   }, [fetchData]);
 
-  // Initial data fetch
+  // Initial data fetch - fetch price data first, then market data
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const initializeData = async () => {
+      // Fetch price data first for immediate price display
+      await fetchPriceData();
+      // Then fetch market data
+      fetchData();
+    };
+    
+    initializeData();
+  }, [fetchData, fetchPriceData]);
 
   // Auto-refresh with different intervals based on timeframe
   useEffect(() => {
@@ -208,6 +266,10 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
       try {
         const marketAnalysis = AIAnalyzer.analyzeMarket(candleData);
         setAnalysis(marketAnalysis);
+        
+        // Calculate indicator arrays
+        const indicators = TechnicalAnalysis.calculateIndicatorArrays(candleData);
+        setIndicatorArrays(indicators);
       } catch (err) {
         console.error('Error analyzing market data:', err);
       }
@@ -217,6 +279,7 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
   return {
     candleData,
     analysis,
+    indicatorArrays,
     isLoading,
     error,
     lastUpdate,
@@ -224,6 +287,8 @@ export function useMarketData(onCandleUpdate?: (candle: ProcessedCandle) => void
     isConnected,
     currentPrice,
     priceChange,
+    priceChangePercent,
+    tickerData,
     wsError,
     connectionState,
     indicators: analysis?.indicators || null,
