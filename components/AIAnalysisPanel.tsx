@@ -49,12 +49,26 @@ export default function AIAnalysisPanel({ candles, indicators, currentTimeframe 
   const [isAILoading, setIsAILoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isAIAvailable, setIsAIAvailable] = useState(false);
+  const [isInArtifacts, setIsInArtifacts] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState<BinanceInterval>(currentTimeframe);
-  // const [isDevelopmentMode] = useState(true); // Always show development mode for testing
 
   // Check AI availability on mount
   useEffect(() => {
-    ClaudeAI.isAvailable().then(setIsAIAvailable);
+    const checkAIAvailability = async () => {
+      const available = await ClaudeAI.isAvailable();
+      const inArtifacts = ClaudeAI.isInClaudeArtifacts();
+      
+      setIsAIAvailable(available);
+      setIsInArtifacts(inArtifacts);
+      
+      console.log('AI Availability Status:', {
+        available,
+        inArtifacts,
+        hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A'
+      });
+    };
+    
+    checkAIAvailability();
   }, []);
 
   // Manual AI analysis function
@@ -110,7 +124,8 @@ export default function AIAnalysisPanel({ candles, indicators, currentTimeframe 
       <h3 className="text-lg font-semibold mb-4 flex items-center">
         <div className={`w-3 h-3 rounded-full mr-2 ${
           isAILoading ? 'bg-yellow-500 animate-pulse' : 
-          aiError ? 'bg-red-500' : 'bg-green-500'
+          aiError ? 'bg-red-500' : 
+          isAIAvailable ? 'bg-green-500' : 'bg-orange-500'
         }`}></div>
         AI Analysis
         {isAILoading && (
@@ -165,9 +180,38 @@ export default function AIAnalysisPanel({ candles, indicators, currentTimeframe 
             <div className="flex items-center space-x-2">
               <div className={`w-2 h-2 rounded-full ${isAIAvailable ? 'bg-green-400' : 'bg-orange-400'}`}></div>
               <span>
-                {isAIAvailable ? 'Claude AI Connected' : 'Development Mode - Using Mock AI'}
+                {isAIAvailable ? (
+                  '🤖 Real Claude AI Connected'
+                ) : isInArtifacts ? (
+                  '⚙️ Artifacts Environment - Enable AI Features'
+                ) : (
+                  '🧪 Development Mode - Using Mock AI'
+                )}
               </span>
             </div>
+            
+            {/* AI Status Details */}
+            {!isAIAvailable && (
+              <div className="mt-2 text-xs space-y-1">
+                {isInArtifacts ? (
+                  <div className="space-y-1">
+                    <div className="text-green-400">✅ Running in Claude Artifacts</div>
+                    <div className="text-red-400">❌ Real AI API not ready</div>
+                    <div className="text-yellow-300">
+                      💡 Enable &quot;Create AI-powered artifacts&quot; in Claude settings
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="text-red-400">❌ Not in Claude Artifacts environment</div>
+                    <div className="text-red-400">❌ window.claude.complete() not available</div>
+                    <div className="text-blue-300">
+                      💡 Use Mock AI for testing or deploy to Claude Artifacts
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex space-x-3">

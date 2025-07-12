@@ -22,8 +22,44 @@ export interface AIAnalysisResult {
 
 export class ClaudeAI {
   static async isAvailable(): Promise<boolean> {
-    return typeof window !== 'undefined' && 
-           typeof window.claude?.complete === 'function';
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    // Check if running in Claude Artifacts environment
+    const isInArtifacts = this.isInClaudeArtifacts();
+    
+    // Check if window.claude.complete is available
+    const hasClaudeAPI = typeof window.claude?.complete === 'function';
+    
+    console.log('Claude AI Availability Check:', {
+      isInArtifacts,
+      hasClaudeAPI,
+      userAgent: navigator.userAgent,
+      hostname: window.location.hostname
+    });
+    
+    return hasClaudeAPI;
+  }
+
+  static isInClaudeArtifacts(): boolean {
+    if (typeof window === 'undefined') return false;
+    
+    // Check for Claude Artifacts environment indicators
+    const hostname = window.location.hostname;
+    
+    // Claude Artifacts typically run on specific domains or in sandboxed environments
+    const artifactsIndicators = [
+      hostname.includes('claude.ai'),
+      hostname.includes('anthropic.com'),
+      hostname.includes('artifacts'),
+      // Check for iframe sandbox
+      window.self !== window.top,
+      // Check for specific CSP headers that might indicate artifacts environment
+      document.querySelector('meta[http-equiv="Content-Security-Policy"]') !== null
+    ];
+    
+    return artifactsIndicators.some(indicator => indicator);
   }
 
   static async mockAnalyze(candles: ProcessedCandle[], indicators: TechnicalIndicators): Promise<AIAnalysisResult> {
@@ -90,8 +126,21 @@ export class ClaudeAI {
     candles: ProcessedCandle[], 
     indicators: TechnicalIndicators
   ): Promise<AIAnalysisResult> {
-    if (!await this.isAvailable()) {
-      throw new Error('Claude AI not available in this context');
+    const isAvailable = await this.isAvailable();
+    const isInArtifacts = this.isInClaudeArtifacts();
+    
+    console.log('Attempting Real AI Analysis:', {
+      isAvailable,
+      isInArtifacts,
+      hasWindowClaudeComplete: typeof window.claude?.complete === 'function'
+    });
+
+    if (!isAvailable) {
+      const errorMsg = isInArtifacts 
+        ? 'Claude AI API not ready in Artifacts environment. Please ensure "Create AI-powered artifacts" is enabled in your Claude account settings.'
+        : 'Claude AI not available. This feature works in Claude Artifacts environment or when window.claude.complete() is available.';
+      
+      throw new Error(errorMsg);
     }
 
     const currentCandle = candles[candles.length - 1];
@@ -100,11 +149,29 @@ export class ClaudeAI {
     const prompt = this.buildAnalysisPrompt(currentCandle, recentCandles, indicators);
     
     try {
+      console.log('Calling window.claude.complete() with prompt length:', prompt.length);
       const response = await window.claude!.complete(prompt);
+      console.log('Received AI response length:', response.length);
+      
       return this.parseAIResponse(response, currentCandle.close);
     } catch (error) {
       console.error('Claude AI analysis failed:', error);
-      throw new Error('Failed to get AI analysis');
+      
+      // Enhanced error message based on error type
+      let errorMessage = 'Failed to get AI analysis';
+      if (error instanceof Error) {
+        if (error.message.includes('authentication') || error.message.includes('auth')) {
+          errorMessage = 'Authentication required. Please sign in to your Claude account.';
+        } else if (error.message.includes('quota') || error.message.includes('limit')) {
+          errorMessage = 'API quota exceeded. Please try again later.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection.';
+        } else {
+          errorMessage = `AI analysis error: ${error.message}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
   }
 

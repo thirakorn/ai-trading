@@ -1,5 +1,21 @@
 import { ProcessedCandle } from './binance';
-import { Time } from 'lightweight-charts';
+
+// Define Time type locally to avoid client-side dependency
+export type Time = number;
+
+// Technical Indicator Constants
+export const INDICATOR_PERIODS = {
+  RSI: 14,
+  SMA_SHORT: 20,
+  SMA_LONG: 50,
+  EMA_FAST: 12,
+  EMA_SLOW: 26,
+  MACD_FAST: 12,
+  MACD_SLOW: 26,
+  MACD_SIGNAL: 9,
+  BB_PERIOD: 20,
+  BB_MULTIPLIER: 2
+} as const;
 
 export interface IndicatorDataPoint {
   time: Time;
@@ -59,7 +75,7 @@ export class TechnicalAnalysis {
     return ema;
   }
   
-  static calculateRSI(candles: ProcessedCandle[], period = 14): number | null {
+  static calculateRSI(candles: ProcessedCandle[], period = INDICATOR_PERIODS.RSI): number | null {
     if (candles.length < period + 1) {
       console.log('RSI: Not enough data', candles.length, 'need', period + 1);
       return null;
@@ -92,7 +108,7 @@ export class TechnicalAnalysis {
     return rsi;
   }
 
-  static calculateRSIArray(candles: ProcessedCandle[], period = 14): IndicatorDataPoint[] {
+  static calculateRSIArray(candles: ProcessedCandle[], period = INDICATOR_PERIODS.RSI): IndicatorDataPoint[] {
     if (candles.length < period + 1) {
       return [];
     }
@@ -136,8 +152,8 @@ export class TechnicalAnalysis {
   }
   
   static calculateMACD(candles: ProcessedCandle[]): { macd: number | null; signal: number | null; histogram: number | null } {
-    const ema12 = this.calculateEMA(candles, 12);
-    const ema26 = this.calculateEMA(candles, 26);
+    const ema12 = this.calculateEMA(candles, INDICATOR_PERIODS.MACD_FAST);
+    const ema26 = this.calculateEMA(candles, INDICATOR_PERIODS.MACD_SLOW);
     
     if (!ema12 || !ema26) {
       return { macd: null, signal: null, histogram: null };
@@ -153,7 +169,7 @@ export class TechnicalAnalysis {
     return { macd, signal, histogram };
   }
 
-  static calculateMACDArray(candles: ProcessedCandle[], fastPeriod = 12, slowPeriod = 26, signalPeriod = 9): {
+  static calculateMACDArray(candles: ProcessedCandle[], fastPeriod = INDICATOR_PERIODS.MACD_FAST, slowPeriod = INDICATOR_PERIODS.MACD_SLOW, signalPeriod = INDICATOR_PERIODS.MACD_SIGNAL): {
     macd: IndicatorDataPoint[];
     signal: IndicatorDataPoint[];
     histogram: IndicatorDataPoint[];
@@ -264,7 +280,7 @@ export class TechnicalAnalysis {
     return emaData;
   }
   
-  static calculateBollingerBands(candles: ProcessedCandle[], period = 20, stdDev = 2): { upper: number | null; middle: number | null; lower: number | null } {
+  static calculateBollingerBands(candles: ProcessedCandle[], period = INDICATOR_PERIODS.BB_PERIOD, stdDev = INDICATOR_PERIODS.BB_MULTIPLIER): { upper: number | null; middle: number | null; lower: number | null } {
     const sma = this.calculateSMA(candles, period);
     
     if (!sma || candles.length < period) {
@@ -295,10 +311,10 @@ export class TechnicalAnalysis {
     console.log('Last candle:', candles[candles.length - 1]);
     
     const indicators = {
-      sma20: this.calculateSMA(candles, 20),
-      sma50: this.calculateSMA(candles, 50),
-      ema12: this.calculateEMA(candles, 12),
-      ema26: this.calculateEMA(candles, 26),
+      sma20: this.calculateSMA(candles, INDICATOR_PERIODS.SMA_SHORT),
+      sma50: this.calculateSMA(candles, INDICATOR_PERIODS.SMA_LONG),
+      ema12: this.calculateEMA(candles, INDICATOR_PERIODS.EMA_FAST),
+      ema26: this.calculateEMA(candles, INDICATOR_PERIODS.EMA_SLOW),
       rsi: this.calculateRSI(candles),
       macd: this.calculateMACD(candles),
       bollinger: this.calculateBollingerBands(candles)

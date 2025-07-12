@@ -1,5 +1,6 @@
 import { ProcessedCandle } from './binance';
 import { TechnicalAnalysis, TechnicalIndicators } from './technical-analysis';
+import { CandlePatternAnalyzer } from './candle-patterns';
 
 export interface TradingSignal {
   type: 'BUY' | 'SELL' | 'HOLD';
@@ -193,47 +194,14 @@ export class AIAnalyzer {
   }
 
   private static identifyPatterns(candles: ProcessedCandle[]): string[] {
-    const patterns: string[] = [];
+    // Use the new enhanced pattern detection system
+    const detectedPatterns = CandlePatternAnalyzer.detectPatterns(candles);
     
-    if (candles.length < 3) return patterns;
-
-    const recent = candles.slice(-3);
-    
-    // Doji pattern
-    if (Math.abs(recent[2].open - recent[2].close) < (recent[2].high - recent[2].low) * 0.1) {
-      patterns.push('Doji - Indecision');
-    }
-
-    // Hammer/Shooting Star
-    const bodySize = Math.abs(recent[2].close - recent[2].open);
-    const upperWick = recent[2].high - Math.max(recent[2].open, recent[2].close);
-    const lowerWick = Math.min(recent[2].open, recent[2].close) - recent[2].low;
-
-    if (lowerWick > bodySize * 2 && upperWick < bodySize * 0.5) {
-      patterns.push('Hammer - Potential reversal');
-    }
-
-    if (upperWick > bodySize * 2 && lowerWick < bodySize * 0.5) {
-      patterns.push('Shooting Star - Potential reversal');
-    }
-
-    // Engulfing patterns
-    if (recent.length >= 2) {
-      const prev = recent[1];
-      const curr = recent[2];
-      
-      if (prev.close < prev.open && curr.close > curr.open && 
-          curr.close > prev.open && curr.open < prev.close) {
-        patterns.push('Bullish Engulfing');
-      }
-      
-      if (prev.close > prev.open && curr.close < curr.open && 
-          curr.close < prev.open && curr.open > prev.close) {
-        patterns.push('Bearish Engulfing');
-      }
-    }
-
-    return patterns;
+    // Convert to simple string array for backward compatibility
+    // But also include confidence information
+    return detectedPatterns.map(dp => 
+      `${dp.pattern.icon} ${dp.pattern.name} (${dp.confidence}%) - ${dp.pattern.type.toLowerCase()}`
+    );
   }
 
   private static findSupportResistance(candles: ProcessedCandle[]): { support: number | null; resistance: number | null } {

@@ -3,7 +3,9 @@
 import { MarketAnalysis } from '@/lib/ai-analyzer';
 import AIAnalysisPanel from './AIAnalysisPanel';
 import { ProcessedCandle, BinanceInterval } from '@/lib/binance';
-import { TechnicalIndicators } from '@/lib/technical-analysis';
+import { TechnicalIndicators, INDICATOR_PERIODS } from '@/lib/technical-analysis';
+import { CandlePatternAnalyzer } from '@/lib/candle-patterns';
+import { useState } from 'react';
 
 interface AnalysisPanelProps {
   analysis: MarketAnalysis | null;
@@ -15,6 +17,8 @@ interface AnalysisPanelProps {
 }
 
 export default function AnalysisPanel({ analysis, isLoading, useAI, candles, indicators, currentTimeframe }: AnalysisPanelProps) {
+  const [expandedPattern, setExpandedPattern] = useState<string | null>(null);
+
   // Show AI analysis if enabled and data is available
   if (useAI && candles && candles.length > 0) {
     return (
@@ -154,25 +158,25 @@ export default function AnalysisPanel({ analysis, isLoading, useAI, candles, ind
         <h4 className="text-lg font-semibold text-white mb-3">Technical Indicators</h4>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-gray-400">RSI</p>
+            <p className="text-gray-400">RSI ({INDICATOR_PERIODS.RSI})</p>
             <p className="text-white font-mono">
               {analysis.indicators.rsi ? analysis.indicators.rsi.toFixed(2) : 'N/A'}
             </p>
           </div>
           <div>
-            <p className="text-gray-400">SMA 20</p>
+            <p className="text-gray-400">SMA ({INDICATOR_PERIODS.SMA_SHORT})</p>
             <p className="text-white font-mono">
               {analysis.indicators.sma20 ? `$${analysis.indicators.sma20.toFixed(2)}` : 'N/A'}
             </p>
           </div>
           <div>
-            <p className="text-gray-400">MACD</p>
+            <p className="text-gray-400">MACD ({INDICATOR_PERIODS.MACD_FAST}/{INDICATOR_PERIODS.MACD_SLOW}/{INDICATOR_PERIODS.MACD_SIGNAL})</p>
             <p className="text-white font-mono">
               {analysis.indicators.macd.macd ? analysis.indicators.macd.macd.toFixed(4) : 'N/A'}
             </p>
           </div>
           <div>
-            <p className="text-gray-400">BB Upper</p>
+            <p className="text-gray-400">BB Upper ({INDICATOR_PERIODS.BB_PERIOD}/{INDICATOR_PERIODS.BB_MULTIPLIER})</p>
             <p className="text-white font-mono">
               {analysis.indicators.bollinger.upper ? `$${analysis.indicators.bollinger.upper.toFixed(2)}` : 'N/A'}
             </p>
@@ -201,19 +205,84 @@ export default function AnalysisPanel({ analysis, isLoading, useAI, candles, ind
         </div>
       )}
 
-      {/* Patterns */}
-      {analysis.patterns.length > 0 && (
-        <div className="border border-gray-700 rounded-lg p-4">
-          <h4 className="text-lg font-semibold text-white mb-3">Detected Patterns</h4>
-          <div className="space-y-2">
-            {analysis.patterns.map((pattern, index) => (
-              <span key={index} className="inline-block bg-blue-900/20 text-blue-300 px-2 py-1 rounded text-sm mr-2">
-                {pattern}
-              </span>
-            ))}
+      {/* Enhanced Candle Patterns */}
+      {candles && candles.length > 0 && (() => {
+        const detectedPatterns = CandlePatternAnalyzer.detectPatterns(candles);
+        return detectedPatterns.length > 0 && (
+          <div className="border border-gray-700 rounded-lg p-4">
+            <h4 className="text-lg font-semibold text-white mb-3">🕯️ Candle Patterns</h4>
+            <div className="space-y-3">
+              {detectedPatterns.map((detectedPattern, index) => {
+                const pattern = detectedPattern.pattern;
+                const isExpanded = expandedPattern === `${pattern.name}-${index}`;
+                
+                return (
+                  <div key={index} className="border border-gray-600 rounded-lg p-3 hover:border-gray-500 transition-colors">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer"
+                      onClick={() => setExpandedPattern(isExpanded ? null : `${pattern.name}-${index}`)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <span className="text-xl">{pattern.icon}</span>
+                        <div>
+                          <span className={`inline-block px-2 py-1 rounded text-sm font-medium ${
+                            CandlePatternAnalyzer.getPatternTypeColor(pattern.type)
+                          }`}>
+                            {pattern.name}
+                          </span>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className="text-xs text-gray-400">
+                              {CandlePatternAnalyzer.getReliabilityStars(pattern.reliability)}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              Confidence: {detectedPattern.confidence}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-gray-400">
+                        {isExpanded ? '▼' : '▶'}
+                      </div>
+                    </div>
+                    
+                    {isExpanded && (
+                      <div className="mt-3 pt-3 border-t border-gray-600 space-y-2">
+                        <div>
+                          <p className="text-sm text-gray-300 font-medium mb-1">คำอธิบาย:</p>
+                          <p className="text-sm text-gray-400">{pattern.description}</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm text-gray-300 font-medium mb-1">ความหมายการเทรด:</p>
+                          <p className="text-sm text-gray-400">{pattern.tradingImplication}</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm text-gray-300 font-medium mb-1">เมื่อไหร่ควรเทรด:</p>
+                          <p className="text-sm text-gray-400">{pattern.when_to_trade}</p>
+                        </div>
+                        
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="text-xs text-gray-500">
+                            ระดับความน่าเชื่อถือ: {pattern.reliability}/5
+                          </div>
+                          <div className={`text-xs px-2 py-1 rounded ${
+                            pattern.type === 'BULLISH' ? 'bg-green-900/30 text-green-300' :
+                            pattern.type === 'BEARISH' ? 'bg-red-900/30 text-red-300' :
+                            'bg-yellow-900/30 text-yellow-300'
+                          }`}>
+                            {pattern.type}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
