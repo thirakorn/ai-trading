@@ -1,0 +1,12 @@
+name = "btc-trading-analyzer"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[env.production]
+name = "btc-trading-analyzer"
+
+[env.preview]
+name = "btc-trading-analyzer-preview"
+
+# Pages specific configuration
+# This will be used when deploying to Cloudflare Pages
