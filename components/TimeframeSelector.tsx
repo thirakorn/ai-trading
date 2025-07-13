@@ -46,15 +46,15 @@ export default function TimeframeSelector({
   disabled = false 
 }: TimeframeSelectorProps) {
   return (
-    <div className="flex items-center space-x-2">
-      <span className="text-sm text-gray-400 font-medium">Timeframe:</span>
+    <div className="flex items-center space-x-1 sm:space-x-2">
+      <span className="text-xs sm:text-sm text-gray-400 font-medium hidden sm:inline">Timeframe:</span>
       <div className="relative">
         <select
           value={currentTimeframe}
           onChange={(e) => onTimeframeChange(e.target.value as BinanceInterval)}
           disabled={disabled}
           className={`
-            bg-gray-800 text-white border border-gray-600 rounded-lg px-3 py-2 text-sm
+            bg-gray-800 text-white border border-gray-600 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm
             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
             hover:bg-gray-700 transition-colors duration-200
             ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}

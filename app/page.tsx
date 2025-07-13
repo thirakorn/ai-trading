@@ -36,42 +36,57 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
-      <div className="border-b border-gray-800 p-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Entry/Exit Trading Analyzer</h1>
-            <p className="text-gray-400">AI-Powered Entry/Exit Analysis</p>
+      <div className="border-b border-gray-800 p-3 sm:p-4">
+        <div className="flex flex-col space-y-3 lg:space-y-0 lg:flex-row lg:justify-between lg:items-center">
+          {/* Title Section */}
+          <div className="flex-shrink-0">
+            <h1 className="text-xl sm:text-2xl font-bold">
+              <span className="hidden sm:inline">Entry/Exit Trading Analyzer</span>
+              <span className="inline sm:hidden">Trading Analyzer</span>
+            </h1>
+            <p className="text-gray-400 text-sm sm:text-base">AI-Powered Entry/Exit Analysis</p>
           </div>
-          <div className="flex items-center space-x-4">
-            <SymbolSelector
-              currentSymbol={currentSymbol}
-              onSymbolChange={changeSymbol}
-              disabled={isLoading}
-            />
-            <div className="border-l border-gray-600 h-6"></div>
-            <TimeframeSelector
-              currentTimeframe={currentTimeframe}
-              onTimeframeChange={changeTimeframe}
-              disabled={isLoading}
-            />
-            <div className="border-l border-gray-600 h-6"></div>
-            <AIToggle
-              useAI={useAI}
-              onToggle={setUseAI}
-              disabled={isLoading}
-            />
-            {lastUpdate && (
-              <div className="text-sm text-gray-400">
-                Last Update: {lastUpdate.toLocaleTimeString()}
-              </div>
-            )}
-            <button
-              onClick={refreshData}
-              disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              {isLoading ? 'Loading...' : 'Refresh'}
-            </button>
+          
+          {/* Controls Section */}
+          <div className="flex flex-col space-y-3 lg:space-y-0 lg:flex-row lg:items-center lg:space-x-4">
+            {/* Selectors Row */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              <SymbolSelector
+                currentSymbol={currentSymbol}
+                onSymbolChange={changeSymbol}
+                disabled={isLoading}
+              />
+              <div className="hidden sm:block border-l border-gray-600 h-6"></div>
+              <TimeframeSelector
+                currentTimeframe={currentTimeframe}
+                onTimeframeChange={changeTimeframe}
+                disabled={isLoading}
+              />
+              <div className="hidden sm:block border-l border-gray-600 h-6"></div>
+              <AIToggle
+                useAI={useAI}
+                onToggle={setUseAI}
+                disabled={isLoading}
+              />
+            </div>
+            
+            {/* Status and Actions Row */}
+            <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-4">
+              {lastUpdate && (
+                <div className="text-xs sm:text-sm text-gray-400 flex-1 sm:flex-none">
+                  <span className="hidden sm:inline">Last Update: </span>
+                  <span className="inline sm:hidden">Updated: </span>
+                  {lastUpdate.toLocaleTimeString()}
+                </div>
+              )}
+              <button
+                onClick={refreshData}
+                disabled={isLoading}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex-shrink-0"
+              >
+                {isLoading ? 'Loading...' : 'Refresh'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
